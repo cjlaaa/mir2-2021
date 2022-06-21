@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using C = ClientPackets;
@@ -23,6 +24,8 @@ namespace Client.MirScenes.Dialogs
         public CreatureButton[] CreatureButtons;
         public int SelectedCreatureSlot = -1;
         public MirControl HoverLabelParent = null;
+
+        private readonly Regex CreatureNameReg = new Regex(@"^[A-Za-z0-9]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
 
         private MirAnimatedControl CreatureImage;
         public long SwitchAnimTime;
@@ -454,11 +457,20 @@ namespace Client.MirScenes.Dialogs
                 inputBox.InputTextBox.Text = GameScene.User.IntelligentCreatures[selectedCreature].CustomName;
                 inputBox.OKButton.Click += (o1, e1) =>
                 {
-                    Update();//refresh changes
-                    GameScene.User.IntelligentCreatures[selectedCreature].CustomName = inputBox.InputTextBox.Text;
-                    Network.Enqueue(new C.UpdateIntelligentCreature { Creature = GameScene.User.IntelligentCreatures[selectedCreature] });
-                    inputBox.Dispose();
+                    if (!CreatureNameReg.IsMatch(inputBox.InputTextBox.Text))
+                    {
+                        MirMessageBox failedMessage = new MirMessageBox(string.Format("Creature name must be between {0} and {1} characters.", Globals.MinCharacterNameLength, Globals.MaxCharacterNameLength), MirMessageBoxButtons.OK);
+                        failedMessage.Show();
+                    }
+                    else
+                    {
+                        Update();//refresh changes
+                        GameScene.User.IntelligentCreatures[selectedCreature].CustomName = inputBox.InputTextBox.Text;
+                        Network.Enqueue(new C.UpdateIntelligentCreature { Creature = GameScene.User.IntelligentCreatures[selectedCreature] });
+                        inputBox.Dispose();
+                    }
                 };
+
                 inputBox.Show();
                 CreatureRenameButton.Visible = false;
                 return;
@@ -736,7 +748,7 @@ namespace Client.MirScenes.Dialogs
             }
             else
             {
-                var seconds = (GameScene.User.IntelligentCreatures[selectedCreature].Expire - DateTime.Now).TotalSeconds;
+                var seconds = (GameScene.User.IntelligentCreatures[selectedCreature].Expire - CMain.Now).TotalSeconds;
 
                 CreatureDeadline.Text = string.Format(GameLanguage.Expire, Functions.PrintTimeSpanFromSeconds(seconds));
             }
@@ -1259,7 +1271,7 @@ namespace Client.MirScenes.Dialogs
     }
     public sealed class IntelligentCreatureOptionsGradeDialog : MirImageControl
     {
-        private string[] GradeStrings = { "All", "Common", "Rare", "Mythical", "Legendary" };
+        private string[] GradeStrings = { "All", "Common", "Rare", "Mythical", "Legendary", "Heroic" };
 
         public MirButton NextButton, PrevButton;
         public MirLabel GradeLabel;
@@ -1342,6 +1354,8 @@ namespace Client.MirScenes.Dialogs
                     return Color.DarkOrange;
                 case ItemGrade.Mythical:
                     return Color.Plum;
+                case ItemGrade.Heroic:
+                    return Color.Red;
                 default:
                     return Color.White;
             }

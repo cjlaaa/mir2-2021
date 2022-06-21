@@ -379,6 +379,11 @@ namespace Server.MirObjects
 
                     CheckList.Add(new NPCChecks(CheckType.ConquestOwner, parts[1]));
                     break;
+                case "CHECKTIMER":
+                    if (parts.Length < 4) return;
+
+                    CheckList.Add(new NPCChecks(CheckType.CheckTimer, parts[1], parts[2], parts[3]));
+                    break;
             }
 
         }
@@ -1050,14 +1055,20 @@ namespace Server.MirObjects
                     acts.Add(new NPCActions(ActionType.PlaySound, parts[1]));
                     break;
                 case "SETTIMER":
-                    if (parts.Length < 4) return;
+                    {
+                        if (parts.Length < 4) return;
 
-                    acts.Add(new NPCActions(ActionType.SetTimer, parts[1], parts[2], parts[3]));
+                        string global = parts.Length < 5 ? "" : parts[4];
+
+                        acts.Add(new NPCActions(ActionType.SetTimer, parts[1], parts[2], parts[3], global));
+                    }
                     break;
                 case "EXPIRETIMER":
-                    if (parts.Length < 2) return;
+                    {
+                        if (parts.Length < 2) return;
 
-                    acts.Add(new NPCActions(ActionType.ExpireTimer, parts[1]));
+                        acts.Add(new NPCActions(ActionType.ExpireTimer, parts[1]));
+                    }
                     break;
 
                 case "UNEQUIPITEM":
@@ -1079,6 +1090,28 @@ namespace Server.MirObjects
                     if (parts.Length < 3) return;
 
                     acts.Add(new NPCActions(ActionType.RollYut, parts[1], parts[2]));
+                    break;
+
+                case "DROP":
+                    if (parts.Length < 2) return;
+
+                    quoteMatch = regexQuote.Match(line);
+
+                    listPath = parts[1];
+
+                    if (quoteMatch.Success)
+                        listPath = quoteMatch.Groups[1].Captures[0].Value;
+
+                    fileName = Path.Combine(Settings.DropPath, listPath);
+
+                    acts.Add(new NPCActions(ActionType.Drop, fileName));
+                    break;
+
+                case "REVIVEHERO":
+                    acts.Add(new NPCActions(ActionType.ReviveHero));
+                    break;
+                case "SEALHERO":
+                    acts.Add(new NPCActions(ActionType.SealHero));
                     break;
             }
         }
@@ -1106,10 +1139,10 @@ namespace Server.MirObjects
             var oneValRegex = new Regex(@"(.*?)\(((.*?))\)");
             var twoValRegex = new Regex(@"(.*?)\(((.*?),(.*?))\)");
             ConquestObject Conquest;
-            ConquestArcherObject Archer;
-            ConquestGateObject Gate;
-            ConquestWallObject Wall;
-            ConquestSiegeObject Siege;
+            ConquestGuildArcherInfo Archer;
+            ConquestGuildGateInfo Gate;
+            ConquestGuildWallInfo Wall;
+            ConquestGuildSiegeInfo Siege;
 
             var match = regex.Match(param);
 
@@ -1251,7 +1284,7 @@ namespace Server.MirObjects
                         Conquest = Envir.Conquests.FirstOrDefault(x => x.Info.Index == intVal1);
                         if (Conquest == null) return string.Empty;
 
-                        newValue = Conquest.GoldStorage.ToString();
+                        newValue = Conquest.GuildInfo.GoldStorage.ToString();
                     }
                     break;
                 case "CONQUESTRATE()":
@@ -1262,7 +1295,7 @@ namespace Server.MirObjects
                         Conquest = Envir.Conquests.FirstOrDefault(x => x.Info.Index == intVal1);
                         if (Conquest == null) return string.Empty;
 
-                        newValue = Conquest.npcRate.ToString() + "%";
+                        newValue = Conquest.GuildInfo.NPCRate.ToString() + "%";
                     }
                     break;
                 case "CONQUESTSCHEDULE()":
@@ -1272,12 +1305,16 @@ namespace Server.MirObjects
                     {
                         Conquest = Envir.Conquests.FirstOrDefault(x => x.Info.Index == intVal1);
                         if (Conquest == null) return "Conquest Not Found";
-                        if (Conquest.AttackerID == -1) return "No War Scheduled";
+                        if (Conquest.GuildInfo.AttackerID == -1) return "No War Scheduled";
 
-                        if (Envir.GuildList.FirstOrDefault(x => x.Guildindex == Conquest.AttackerID) == null)
+                        if (Envir.Guilds.FirstOrDefault(x => x.Guildindex == Conquest.GuildInfo.AttackerID) == null)
+                        {
                             newValue = "No War Scheduled";
+                        }
                         else
-                            newValue = (Envir.GuildList.FirstOrDefault(x => x.Guildindex == Conquest.AttackerID).Name);
+                        {
+                            newValue = (Envir.Guilds.FirstOrDefault(x => x.Guildindex == Conquest.GuildInfo.AttackerID).Name);
+                        }
                     }
                     break;
                 case "OUTPUT()":
@@ -1381,7 +1418,7 @@ namespace Server.MirObjects
                     break;
 
                 case "DATE":
-                    newValue = DateTime.Now.ToShortDateString();
+                    newValue = Envir.Now.ToShortDateString();
                     break;
                 case "USERCOUNT":
                     newValue = Envir.PlayerCount.ToString(CultureInfo.InvariantCulture);
@@ -1462,7 +1499,7 @@ namespace Server.MirObjects
                     newValue = Monster.Stats[Stat.HP].ToString(CultureInfo.InvariantCulture);
                     break;
                 case "DATE":
-                    newValue = DateTime.Now.ToShortDateString();
+                    newValue = Envir.Now.ToShortDateString();
                     break;
                 case "USERCOUNT":
                     newValue = Envir.PlayerCount.ToString(CultureInfo.InvariantCulture);
@@ -1499,7 +1536,7 @@ namespace Server.MirObjects
                 switch (check.Type)
                 {
                     case CheckType.CheckDay:
-                        var day = DateTime.Now.DayOfWeek.ToString().ToUpper();
+                        var day = Envir.Now.DayOfWeek.ToString().ToUpper();
                         var dayToCheck = param[0].ToUpper();
 
                         failed = day != dayToCheck;
@@ -1512,7 +1549,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var hour = DateTime.Now.Hour;
+                        var hour = Envir.Now.Hour;
                         var hourToCheck = tempUint;
 
                         failed = hour != hourToCheck;
@@ -1525,7 +1562,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var minute = DateTime.Now.Minute;
+                        var minute = Envir.Now.Minute;
                         var minuteToCheck = tempUint;
 
                         failed = minute != minuteToCheck;
@@ -1684,7 +1721,7 @@ namespace Server.MirObjects
                         }
                         break;
                     case CheckType.CheckDay:
-                        var day = DateTime.Now.DayOfWeek.ToString().ToUpper();
+                        var day = Envir.Now.DayOfWeek.ToString().ToUpper();
                         var dayToCheck = param[0].ToUpper();
 
                         failed = day != dayToCheck;
@@ -1697,7 +1734,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var hour = DateTime.Now.Hour;
+                        var hour = Envir.Now.Hour;
                         var hourToCheck = tempUint;
 
                         failed = hour != hourToCheck;
@@ -1710,7 +1747,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var minute = DateTime.Now.Minute;
+                        var minute = Envir.Now.Minute;
                         var minuteToCheck = tempUint;
 
                         failed = minute != minuteToCheck;
@@ -1996,7 +2033,7 @@ namespace Server.MirObjects
                         break;
 
                     case CheckType.CheckDay:
-                        var day = DateTime.Now.DayOfWeek.ToString().ToUpper();
+                        var day = Envir.Now.DayOfWeek.ToString().ToUpper();
                         var dayToCheck = param[0].ToUpper();
 
                         failed = day != dayToCheck;
@@ -2009,7 +2046,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var hour = DateTime.Now.Hour;
+                        var hour = Envir.Now.Hour;
                         var hourToCheck = tempUint;
 
                         failed = hour != hourToCheck;
@@ -2022,7 +2059,7 @@ namespace Server.MirObjects
                             break;
                         }
 
-                        var minute = DateTime.Now.Minute;
+                        var minute = Envir.Now.Minute;
                         var minuteToCheck = tempUint;
 
                         failed = minute != minuteToCheck;
@@ -2372,7 +2409,7 @@ namespace Server.MirObjects
                                 break;
                             }
 
-                            ConquestArcherObject Archer = Conquest.ArcherList.FirstOrDefault(g => g.Info.Index == tempInt2);
+                            ConquestGuildArcherInfo Archer = Conquest.ArcherList.FirstOrDefault(g => g.Info.Index == tempInt2);
                             if (Archer == null || Archer.GetRepairCost() == 0)
                             {
                                 failed = true;
@@ -2405,7 +2442,7 @@ namespace Server.MirObjects
                                 break;
                             }
 
-                            ConquestGateObject Gate = Conquest.GateList.FirstOrDefault(f => f.Info.Index == tempInt2);
+                            ConquestGuildGateInfo Gate = Conquest.GateList.FirstOrDefault(f => f.Info.Index == tempInt2);
                             if (Gate == null || Gate.GetRepairCost() == 0)
                             {
                                 failed = true;
@@ -2438,7 +2475,7 @@ namespace Server.MirObjects
                                 break;
                             }
 
-                            ConquestWallObject Wall = Conquest.WallList.FirstOrDefault(h => h.Info.Index == tempInt2);
+                            ConquestGuildWallInfo Wall = Conquest.WallList.FirstOrDefault(h => h.Info.Index == tempInt2);
                             if (Wall == null || Wall.GetRepairCost() == 0)
                             {
                                 failed = true;
@@ -2471,7 +2508,7 @@ namespace Server.MirObjects
                                 break;
                             }
 
-                            ConquestGateObject Gate = Conquest.GateList.FirstOrDefault(f => f.Info.Index == tempInt2);
+                            ConquestGuildGateInfo Gate = Conquest.GateList.FirstOrDefault(f => f.Info.Index == tempInt2);
                             if (Gate == null || Gate.GetRepairCost() == 0)
                             {
                                 failed = true;
@@ -2522,7 +2559,7 @@ namespace Server.MirObjects
                             }
 
                             if (player.MyGuild != null)
-                                failed = (Conquest.AttackerID != -1);
+                                failed = (Conquest.GuildInfo.AttackerID != -1);
                             else
                                 failed = true;
                         }
@@ -2548,7 +2585,7 @@ namespace Server.MirObjects
                                 break;
                             }
 
-                            if (player.MyGuild != null && player.MyGuild.Guildindex == Conquest.Owner)
+                            if (player.MyGuild != null && player.MyGuild.Guildindex == Conquest.GuildInfo.Owner)
                                 failed = false;
                             else
                                 failed = true;
@@ -2559,6 +2596,47 @@ namespace Server.MirObjects
                             return true;
                         }
                         break;
+                    case CheckType.CheckTimer:
+                        {
+                            if (!long.TryParse(param[1], out long time))
+                            {
+                                failed = true;
+                                break;
+                            }
+
+                            try
+                            {
+                                var globalTimerKey = "_-" + param[0];
+
+                                Timer timer;
+
+                                if (Envir.Timers.ContainsKey(globalTimerKey))
+                                {
+                                    timer = Envir.Timers[globalTimerKey];
+                                }
+                                else
+                                {
+                                    timer = player.GetTimer(param[0]);
+                                }
+
+                                long remainingTime = 0;
+
+                                if (timer != null)
+                                {
+                                    remainingTime = (timer.RelativeTime - Envir.Time) / 1000;
+                                    break;
+                                }
+
+                                failed = !Compare(param[0], remainingTime, time);
+                            }
+                            catch (ArgumentException)
+                            {
+                                MessageQueue.Enqueue(string.Format("Incorrect operator: {0}, Page: {1}", param[0], Key));
+                                return true;
+                            }
+                        }
+                        break;
+
                 }
 
                 if (!failed) continue;
@@ -2943,7 +3021,7 @@ namespace Server.MirObjects
                         {
                             for (int c = player.Pets.Count - 1; c >= 0; c--)
                             {
-                                player.Pets[c].Die();
+                                player.Pets[c].DieNextTurn = true;
                             }
                         }
                         break;
@@ -3142,7 +3220,7 @@ namespace Server.MirObjects
                             if (magic.Info == null) return;
 
                             player.Info.Magics.Add(magic);
-                            player.Enqueue(magic.GetInfo());
+                            player.SendMagicInfo(magic);
                         }
                         break;
 
@@ -3596,7 +3674,7 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestArcherObject conquestArcher = conquest.ArcherList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildArcherInfo conquestArcher = conquest.ArcherList.FirstOrDefault(z => z.Index == tempInt);
                             if (conquestArcher == null) return;
 
                             if (conquestArcher.ArcherMonster != null)
@@ -3617,7 +3695,7 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestGateObject conquestGate = conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildGateInfo conquestGate = conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
                             if (conquestGate == null) return;
 
                             if (player.MyGuild == null || player.MyGuild.Gold < conquestGate.GetRepairCost()) return;
@@ -3635,7 +3713,7 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestWallObject conquestWall = conquest.WallList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildWallInfo conquestWall = conquest.WallList.FirstOrDefault(z => z.Index == tempInt);
 
                             if (conquestWall == null) return;
 
@@ -3656,11 +3734,13 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestSiegeObject conquestSiege = conquest.SiegeList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildSiegeInfo conquestSiege = conquest.SiegeList.FirstOrDefault(z => z.Index == tempInt);
                             if (conquestSiege == null) return;
 
                             if (conquestSiege.Gate != null)
+                            {
                                 if (!conquestSiege.Gate.Dead) return;
+                            }
 
                             if (player.MyGuild == null || player.MyGuild.Gold < conquestSiege.GetRepairCost()) return;
 
@@ -3676,11 +3756,11 @@ namespace Server.MirObjects
                             var conquest = Envir.Conquests.FirstOrDefault(z => z.Info.Index == tempInt);
                             if (conquest == null) return;
 
-                            if (player.MyGuild != null && player.MyGuild.Guildindex == conquest.Owner)
+                            if (player.MyGuild != null && player.MyGuild.Guildindex == conquest.GuildInfo.Owner)
                             {
-                                player.MyGuild.Gold += conquest.GoldStorage;
-                                player.MyGuild.SendServerPacket(new S.GuildStorageGoldChange() { Type = 3, Amount = conquest.GoldStorage });
-                                conquest.GoldStorage = 0;
+                                player.MyGuild.Gold += conquest.GuildInfo.GoldStorage;
+                                player.MyGuild.SendServerPacket(new S.GuildStorageGoldChange() { Type = 3, Amount = conquest.GuildInfo.GoldStorage });
+                                conquest.GuildInfo.GoldStorage = 0;
                             }
                         }
                         break;
@@ -3691,9 +3771,9 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!byte.TryParse(param[1], out byte tempByte)) return;
-                            if (player.MyGuild != null && player.MyGuild.Guildindex == conquest.Owner)
+                            if (player.MyGuild != null && player.MyGuild.Guildindex == conquest.GuildInfo.Owner)
                             {
-                                conquest.npcRate = tempByte;
+                                conquest.GuildInfo.NPCRate = tempByte;
                             }
                         }
                         break;
@@ -3720,9 +3800,9 @@ namespace Server.MirObjects
                             var conquest = Envir.Conquests.FirstOrDefault(z => z.Info.Index == tempInt);
                             if (conquest == null) return;
 
-                            if (player.MyGuild != null && player.MyGuild.Guildindex != conquest.Owner && !conquest.WarIsOn)
+                            if (player.MyGuild != null && player.MyGuild.Guildindex != conquest.GuildInfo.Owner && !conquest.WarIsOn)
                             {
-                                conquest.AttackerID = player.MyGuild.Guildindex;
+                                conquest.GuildInfo.AttackerID = player.MyGuild.Guildindex;
                             }
                         }
                         break;
@@ -3733,7 +3813,7 @@ namespace Server.MirObjects
                             if (Conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestGateObject OpenGate = Conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildGateInfo OpenGate = Conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
                             if (OpenGate == null) return;
                             if (OpenGate.Gate == null) return;
                             OpenGate.Gate.OpenDoor();
@@ -3746,7 +3826,7 @@ namespace Server.MirObjects
                             if (conquest == null) return;
 
                             if (!int.TryParse(param[1], out tempInt)) return;
-                            ConquestGateObject CloseGate = conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
+                            ConquestGuildGateInfo CloseGate = conquest.GateList.FirstOrDefault(z => z.Index == tempInt);
                             if (CloseGate == null) return;
                             if (CloseGate.Gate == null) return;
                             CloseGate.Gate.CloseDoor();
@@ -3784,11 +3864,31 @@ namespace Server.MirObjects
                         {
                             if (!int.TryParse(param[1], out int seconds) || !byte.TryParse(param[2], out byte type)) return;
 
-                            player.SetTimer(param[0], seconds, type);
+                            bool.TryParse(param[3], out bool global);
+
+                            if (seconds < 0) seconds = 0;
+
+                            if (global)
+                            {
+                                var timerKey = "_-" + param[0];
+
+                                Envir.Timers[timerKey] = new Timer(timerKey, seconds, type);
+                            }
+                            else
+                            {
+                                player.SetTimer(param[0], seconds, type);
+                            }
                         }
                         break;
                     case ActionType.ExpireTimer:
                         {
+                            var globalTimerKey = "_-" + param[0];
+
+                            if (Envir.Timers.ContainsKey(globalTimerKey))
+                            {
+                                Envir.Timers.Remove(globalTimerKey);
+                            }
+
                             player.ExpireTimer(param[0]);
                         }
                         break;
@@ -3860,6 +3960,56 @@ namespace Server.MirObjects
                             player.NPCData["NPCRollResult"] = result;
                             player.Enqueue(p);
                         }
+                        break;
+                    case ActionType.Drop:
+                        {
+                            var path = param[0];
+                            var drops = new List<DropInfo>();
+                            DropInfo.Load(drops, "NPC", path, 0, false);
+
+                            foreach (var drop in drops)
+                            {
+                                var reward = drop.AttemptDrop(player?.Stats[Stat.ItemDropRatePercent] ?? 0, player?.Stats[Stat.GoldDropRatePercent] ?? 0);
+
+                                if (reward != null)
+                                {
+                                    if (reward.Gold > 0)
+                                    {
+                                        player.GainGold(reward.Gold);
+                                    }
+
+                                    foreach (var dropItem in reward.Items)
+                                    {
+                                        UserItem item = Envir.CreateDropItem(dropItem);
+
+                                        if (item == null) continue;
+
+                                        if (player != null && player.Race == ObjectType.Player)
+                                        {
+                                            PlayerObject ob = (PlayerObject)player;
+
+                                            if (ob.CheckGroupQuestItem(item))
+                                            {
+                                                continue;
+                                            }
+                                        }
+
+                                        if (drop.QuestRequired) continue;
+
+                                        if (player.CanGainItem(item, false))
+                                        {
+                                            player.GainItem(item);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        break;
+                    case ActionType.ReviveHero:
+                        player.ReviveHero();
+                        break;
+                    case ActionType.SealHero:
+                        player.SealHero();
                         break;
                 }
             }

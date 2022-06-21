@@ -16,7 +16,28 @@ namespace Server.MirObjects.Monsters
         {
         }
 
-        public override int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        protected override void SpawnDigOutEffect()
+        {
+            if (Visible && Envir.Time > DigOutTime + 500 && !DoneDigOut)
+            {
+                SpellObject ob = new SpellObject
+                {
+                    Spell = Spell.DigOutArmadillo,
+                    Value = 1,
+                    ExpireTime = Envir.Time + (5 * 60 * 1000),
+                    TickSpeed = 2000,
+                    Caster = null,
+                    CurrentLocation = DigOutLocation,
+                    CurrentMap = this.CurrentMap,
+                    Direction = DigOutDirection
+                };
+                CurrentMap.AddObject(ob);
+                ob.Spawned();
+                DoneDigOut = true;
+            }
+        }
+
+        public override int Attacked(HumanObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
         {
             if (_runAway && Envir.Random.Next(4) == 0)
             {

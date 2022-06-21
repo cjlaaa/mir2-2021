@@ -1089,7 +1089,7 @@ namespace Client.MirScenes.Dialogs
                     }
                     Buffs[i].Visible = true;
                     GuildBuff Buff = FindGuildBuff(BuffInfo.Id);
-                    Buffs[i].Name.Text = BuffInfo.name;
+                    Buffs[i].Name.Text = BuffInfo.Name;
                     Buffs[i].Icon.Index = BuffInfo.Icon;
 
                     if (Buff == null)
@@ -1203,7 +1203,7 @@ namespace Client.MirScenes.Dialogs
                 Location = new Point(4, 4),
                 OutLine = true,
                 Parent = GameScene.Scene.GuildBuffLabel,
-                Text = Buff.name
+                Text = Buff.Name
             };
 
             GameScene.Scene.GuildBuffLabel.Size = new Size(Math.Max(GameScene.Scene.GuildBuffLabel.Size.Width, HintName.DisplayRectangle.Right + 4),
@@ -1501,7 +1501,7 @@ namespace Client.MirScenes.Dialogs
         {
             for (int i = 0; i < Ranks.Count; i++)
                 for (int j = 0; j < Ranks[i].Members.Count; j++)
-                    if (Ranks[i].Members[j].name == name)
+                    if (Ranks[i].Members[j].Name == name)
                         Ranks[i].Members[j].Online = online;
             UpdateMembers();
         }
@@ -1597,7 +1597,7 @@ namespace Client.MirScenes.Dialogs
 
             int Offset = 0;
             int RowCount = 0;
-            DateTime now = DateTime.Now;
+            DateTime now = CMain.Now;
             for (int i = 0; i < Ranks.Count; i++)
                 for (int j = 0; j < Ranks[i].Members.Count; j++)
                 {
@@ -1614,12 +1614,12 @@ namespace Client.MirScenes.Dialogs
                             MembersRanks[RowCount].Enabled = true;
                         else
                             MembersRanks[RowCount].Enabled = false;
-                        if ((MyOptions.HasFlag(GuildRankOptions.CanKick)) && (Ranks[i].Index >= MyRankId) && (Ranks[i].Members[j].name != MapControl.User.Name)/* && (Ranks[i].Index != 0)*/)
+                        if ((MyOptions.HasFlag(GuildRankOptions.CanKick)) && (Ranks[i].Index >= MyRankId) && (Ranks[i].Members[j].Name != MapControl.User.Name)/* && (Ranks[i].Index != 0)*/)
                             MembersDelete[RowCount].Visible = true;
                         else
                             MembersDelete[RowCount].Visible = false;
                         MembersRanks[RowCount].SelectedIndex = Ranks[i].Index;
-                        MembersName[RowCount].Text = Ranks[i].Members[j].name;
+                        MembersName[RowCount].Text = Ranks[i].Members[j].Name;
                         if (Ranks[i].Members[j].Online)
                             MembersStatus[RowCount].ForeColour = Color.LimeGreen;
                         else
@@ -1794,7 +1794,7 @@ namespace Client.MirScenes.Dialogs
             MyRankId = New.Index;
             if (OldRank >= Ranks.Count) return;
             for (int i = 0; i < Ranks[OldRank].Members.Count; i++)
-                if (Ranks[OldRank].Members[i].name == MapObject.User.Name)
+                if (Ranks[OldRank].Members[i].Name == MapObject.User.Name)
                 {
                     Member = Ranks[OldRank].Members[i];
                     Ranks[OldRank].Members.Remove(Member);
@@ -1821,7 +1821,7 @@ namespace Client.MirScenes.Dialogs
                 {
                     if (Ranks[i].Name == MapObject.User.GuildRankName)
                         for (int j = 0; j < Ranks[i].Members.Count; j++)
-                            if (Ranks[i].Members[j].name == MapObject.User.Name)
+                            if (Ranks[i].Members[j].Name == MapObject.User.Name)
                             {
                                 MapObject.User.GuildRankName = New.Name;
                                 MyOptions = New.Options;

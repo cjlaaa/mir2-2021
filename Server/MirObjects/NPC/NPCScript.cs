@@ -74,6 +74,10 @@ namespace Server.MirObjects
             ResetKey = "[@RESET]",
             PearlBuyKey = "[@PEARLBUY]",
             BuyUsedKey = "[@BUYUSED]",
+            BuyNewKey = "[@BUYNEW]",
+            BuySellNewKey = "[@BUYSELLNEW]",
+            HeroCreateKey = "[@CREATEHERO]",
+            HeroManageKey = "[@MANAGEHERO]",
 
             TradeKey = "[TRADE]",
             RecipeKey = "[RECIPE]",
@@ -124,13 +128,13 @@ namespace Server.MirObjects
                 return callingNPC.Info.Rate / 100F;
             }
 
-            if (player.MyGuild != null && player.MyGuild.Guildindex == callingNPC.Conq.Owner)
+            if (player.MyGuild != null && player.MyGuild.Guildindex == callingNPC.Conq.GuildInfo.Owner)
             {
                 return callingNPC.Info.Rate / 100F;
             }
             else
             {
-                return (((callingNPC.Info.Rate / 100F) * callingNPC.Conq.npcRate) + callingNPC.Info.Rate) / 100F;
+                return (((callingNPC.Info.Rate / 100F) * callingNPC.Conq.GuildInfo.NPCRate) + callingNPC.Info.Rate) / 100F;
             }
         }
 
@@ -570,6 +574,7 @@ namespace Server.MirObjects
                     while (match.Success)
                     {
                         string argu = match.Groups[1].Captures[0].Value;
+                        argu = argu.Split('/')[0];
 
                         currentButtons.Add(string.Format("[{0}]", argu));
                         match = match.NextMatch();
@@ -950,6 +955,20 @@ namespace Server.MirObjects
                         player.Enqueue(new S.NPCSell());
                     }
                     break;
+                case BuyNewKey:
+                case BuySellNewKey:
+                    sentGoods = new List<UserItem>(Goods);
+
+                    for (int i = 0; i < Goods.Count; i++)
+                        player.CheckItem(Goods[i]);
+
+                    player.Enqueue(new S.NPCGoods { List = sentGoods, Rate = PriceRate(player), Type = PanelType.Buy, HideAddedStats = Settings.GoodsHideAddedStats });
+
+                    if (key == BuySellNewKey)
+                    {
+                        player.Enqueue(new S.NPCSell());
+                    }
+                    break;
                 case SellKey:
                     player.Enqueue(new S.NPCSell());
                     break;
@@ -1098,6 +1117,21 @@ namespace Server.MirObjects
 
                     player.Enqueue(new S.NPCPearlGoods { List = Goods, Rate = PriceRate(player), Type = PanelType.Buy });
                     break;
+                case HeroCreateKey:
+                    if (player.Info.Level < Settings.Hero_RequiredLevel)
+                    {
+                        player.ReceiveChat(String.Format("You have to be at least level {0} to create a hero.", Settings.Hero_RequiredLevel), ChatType.System);
+                        break;
+                    }
+                    player.CanCreateHero = true;
+                    player.Enqueue(new S.HeroCreateRequest()
+                    {
+                        CanCreateClass = Settings.Hero_CanCreateClass
+                    });
+                    break;
+                case HeroManageKey:
+                    player.ManageHeroes();
+                    break;
             }
         }
 
@@ -1176,9 +1210,10 @@ namespace Server.MirObjects
 
                 if (callingNPC != null && callingNPC.Conq != null)
                 {
-                    callingNPC.Conq.GoldStorage += (cost - baseCost);
+                    callingNPC.Conq.GuildInfo.GoldStorage += (cost - baseCost);
                 }
             }
+
             player.GainItem(item);
 
             if (isUsed)

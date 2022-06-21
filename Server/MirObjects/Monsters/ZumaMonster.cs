@@ -46,14 +46,14 @@ namespace Server.MirObjects.Monsters
 
             base.ApplyPoison(p, Caster, NoResist, ignoreDefence);
         }
-        public override Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, params int[] values)
+        public override Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, bool updateOnly = false, params int[] values)
         {
             if (Stoned) return null;
 
-            return base.AddBuff(type, owner, duration, Stats, refreshStats, values);
+            return base.AddBuff(type, owner, duration, stats, refreshStats, updateOnly, values);
         }
 
-        public override bool IsFriendlyTarget(PlayerObject ally)
+        public override bool IsFriendlyTarget(HumanObject ally)
         {
             if (Stoned) return false;
 
@@ -116,7 +116,7 @@ namespace Server.MirObjects.Monsters
         {
             return !Stoned && base.IsAttackTarget(attacker);
         }
-        public override bool IsAttackTarget(PlayerObject attacker)
+        public override bool IsAttackTarget(HumanObject attacker)
         {
             return !Stoned && base.IsAttackTarget(attacker);
         }
@@ -159,6 +159,9 @@ namespace Server.MirObjects.Monsters
             CellTime = Envir.Time + 500;
             ActionTime = Envir.Time + 300;
             MoveTime = Envir.Time + MoveSpeed;
+
+            if (MoveTime > AttackTime)
+                AttackTime = MoveTime;
 
             InSafeZone = CurrentMap.GetSafeZone(CurrentLocation) != null;
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Security.Cryptography;
 using Server.MirDatabase;
@@ -101,6 +102,7 @@ namespace Server
         public static List<long> OrbsDmgList = new List<long>();
 
         public static float DropRate = 1F, ExpRate = 1F;
+        public static int TeleportToNPCCost = 3000;
 
         public static int ItemTimeOut = 30,
                           PlayerDiedItemTimeOut = 120,
@@ -166,7 +168,8 @@ namespace Server
                              ScrollMob1 = "WarriorScroll",
                              ScrollMob2 = "TaoistScroll",
                              ScrollMob3 = "WizardScroll",
-                             ScrollMob4 = "AssassinScroll";
+                             ScrollMob4 = "AssassinScroll",
+                             HeroName = "Hero";
 
         public static string HealRing = "Healing",
                              FireRing = "FireBall",
@@ -180,8 +183,6 @@ namespace Server
         public static uint MaxDropGold = 2000;
         public static bool DropGold = true;
 
-
-        //IntelligentCreature      
         public static string CreatureBlackStoneName = "BlackCreatureStone";
 
         //Fishing Settings
@@ -243,6 +244,7 @@ namespace Server
 
         public static List<RandomItemStat> RandomItemStatsList = new List<RandomItemStat>();
         public static List<MineSet> MineSetList = new List<MineSet>();
+        public static WorldMapSetup WorldMapSetup = new WorldMapSetup();
 
         //item related settings
         public static byte MagicResistWeight = 10,
@@ -255,11 +257,22 @@ namespace Server
                             ManaRegenWeight = 10,
                             MaxLuck = 10;
 
+        public static ushort ItemSealDelay = 60;
+
         public static bool PvpCanResistMagic = false,
                               PvpCanResistPoison = false,
                               PvpCanFreeze = false;
 
         public static byte RangeAccuracyBonus = 0;
+
+        public static bool AllowNewHero;
+        public static byte Hero_RequiredLevel = 22;
+        public static bool[] Hero_CanCreateClass = new bool[0];
+        public static string HeroSealItemName;
+        public static ushort HeroMaximumSealCount;
+        public static byte MaximumHeroCount = 1;
+
+        public static bool AllowObserve;
 
         //Guild related settings
         public static byte Guild_RequiredLevel = 22, Guild_PointPerLevel = 0;
@@ -273,6 +286,10 @@ namespace Server
         public static List<GuildBuffInfo> Guild_BuffList = new List<GuildBuffInfo>();
         public static long GroupInviteDelay { get; internal set; } = 2000;
         public static long TradeDelay { get; internal set; } = 2000;
+
+        //Archive Settings
+        public static int ArchiveInactiveCharacterAfterMonths = 12;
+        public static int ArchiveDeletedCharacterAfterMonths = 1;
 
         public static void LoadVersion()
         {
@@ -406,6 +423,8 @@ namespace Server
             TucsonGeneralEgg = Reader.ReadString("Game", "TucsonGeneralEgg", TucsonGeneralEgg);
             GroupInviteDelay = Reader.ReadInt64("Game", "GroupInviteDelay", GroupInviteDelay);
             TradeDelay = Reader.ReadInt64("Game", "TradeDelay", TradeDelay);
+            TeleportToNPCCost = Reader.ReadInt32("Game", "TeleportToNPCCost", TeleportToNPCCost);
+            HeroName = Reader.ReadString("Game", "HeroName", HeroName);
 
             //Rested
             RestedPeriod = Reader.ReadInt32("Rested", "Period", RestedPeriod);
@@ -435,6 +454,7 @@ namespace Server
             HealthRegenWeight = Math.Max((byte)1, Reader.ReadByte("Items", "HealthRegenWeight", HealthRegenWeight));
             ManaRegenWeight = Math.Max((byte)1, Reader.ReadByte("Items", "ManaRegenWeight", ManaRegenWeight));
             MaxLuck = Reader.ReadByte("Items", "MaxLuck", MaxLuck);
+            ItemSealDelay = Reader.ReadUInt16("Items", "SealDelay", ItemSealDelay);
 
             PvpCanResistMagic = Reader.ReadBoolean("Items","PvpCanResistMagic",PvpCanResistMagic);
             PvpCanResistPoison = Reader.ReadBoolean("Items", "PvpCanResistPoison", PvpCanResistPoison);
@@ -442,8 +462,13 @@ namespace Server
 
             RangeAccuracyBonus = Reader.ReadByte("Bonus", "RangeAccuracyBonus", RangeAccuracyBonus);
 
-            //IntelligentCreature
             CreatureBlackStoneName = Reader.ReadString("IntelligentCreatures", "CreatureBlackStoneName", CreatureBlackStoneName);
+
+            AllowObserve = Reader.ReadBoolean("Observe", "AllowObserve", AllowObserve);
+
+            //Archive
+            ArchiveInactiveCharacterAfterMonths = Math.Max(1, Reader.ReadInt32("Archive", "InactiveCharacterMonths", ArchiveInactiveCharacterAfterMonths));
+            ArchiveDeletedCharacterAfterMonths = Math.Max(1, Reader.ReadInt32("Archive", "DeletedCharacterMonths", ArchiveDeletedCharacterAfterMonths));
 
             if (!Directory.Exists(EnvirPath))
                 Directory.CreateDirectory(EnvirPath);
@@ -508,6 +533,8 @@ namespace Server
             LoadGoods();
             LoadGem();
             LoadNotice();
+            LoadWorldMap();
+            LoadHeroSettings();
 
             GameLanguage.LoadServerLanguage(Path.Combine(ConfigPath, "Language.ini"));
         }
@@ -676,12 +703,15 @@ namespace Server
             Reader.Write("Items", "HealthRegenWeight", HealthRegenWeight);
             Reader.Write("Items", "ManaRegenWeight", ManaRegenWeight);
             Reader.Write("Items", "MaxLuck", MaxLuck);
+            Reader.Write("Items", "SealDelay", ItemSealDelay);
 
             Reader.Write("Items", "PvpCanResistMagic", PvpCanResistMagic);
             Reader.Write("Items", "PvpCanResistPoison", PvpCanResistPoison);
             Reader.Write("Items", "PvpCanFreeze", PvpCanFreeze);
 
             Reader.Write("Bonus", "RangeAccuracyBonus", RangeAccuracyBonus);
+
+            Reader.Write("Observe", "AllowObserve", AllowObserve);
 
             Reader.Write("Game", "GeneralMeowMeowMob1", GeneralMeowMeowMob1);
             Reader.Write("Game", "GeneralMeowMeowMob2", GeneralMeowMeowMob2);
@@ -698,8 +728,15 @@ namespace Server
             Reader.Write("Game", "ScrollMob3", ScrollMob3);
             Reader.Write("Game", "ScrollMob4", ScrollMob4);
 
-            //IntelligentCreature
             Reader.Write("IntelligentCreatures", "CreatureBlackStoneName", CreatureBlackStoneName);
+
+            //Archive
+            Reader.Write("Archive", "InactiveCharacterMonths", ArchiveInactiveCharacterAfterMonths);
+            Reader.Write("Archive", "DeletedCharacterMonths", ArchiveDeletedCharacterAfterMonths);
+
+            Reader.Write("Game", "TeleportToNPCCost", TeleportToNPCCost);
+
+            Reader.Write("Game", "HeroName", HeroName);
 
             SaveAwakeAttribute();
         }
@@ -728,6 +765,44 @@ namespace Server
                 exp = i * 4;//default power value
                 exp = reader.ReadInt64("Att", "Orb" + i, exp);
                 OrbsDmgList.Add(exp);
+            }
+        }
+
+        public static void LoadWorldMap()
+        {
+            InIReader reader = null;
+            string path = Path.Combine(ConfigPath, "WorldMap.ini");
+            if (!File.Exists(path))
+            {
+                FileStream newFile = File.Create(path);
+                newFile.Close();
+                reader = new InIReader(path);
+                reader.Write("Setup", "Enabled", false);
+                reader.Write("Layout", "Button0ImageIndex", "");
+                reader.Write("Layout", "Button0Title", "");
+                reader.Write("Layout", "Button0MapIndex", "");
+            }
+
+            if (reader == null)
+                reader = new InIReader(path);
+            
+            WorldMapSetup.Enabled = reader.ReadBoolean("Setup", "Enabled", false);
+
+            int c = 0;
+            while (true)
+            {
+                int imageIndex = reader.ReadInt32("Layout", $"Button{c}ImageIndex", -1, false);
+                if (imageIndex == -1)
+                    break;
+
+                WorldMapIcon icon = new WorldMapIcon()
+                {
+                    ImageIndex = imageIndex,
+                    Title = reader.ReadString("Layout", $"Button{c}Title", ""),
+                    MapIndex = reader.ReadInt32("Layout", $"Button{c}MapIndex", 0)
+                };
+                WorldMapSetup.Icons.Add(icon);
+                c++;
             }
         }
 
@@ -1046,6 +1121,40 @@ namespace Server
             }
         }
 
+        public static void LoadHeroSettings()
+        {
+            Array.Resize(ref Hero_CanCreateClass, Enum.GetNames(typeof(MirClass)).Length);
+            if (!File.Exists(Path.Combine(ConfigPath, "HeroSettings.ini")))
+            {                
+                for (int i = 0; i < Hero_CanCreateClass.Length; i++)
+                    Hero_CanCreateClass[i] = true;
+                SaveHeroSettings();
+                return;
+            }
+
+            InIReader reader = new InIReader(Path.Combine(ConfigPath, "HeroSettings.ini"));
+            AllowNewHero = reader.ReadBoolean("Hero", "AllowNewHero", AllowNewHero);
+            Hero_RequiredLevel = reader.ReadByte("Hero", "MinimumLevel", Hero_RequiredLevel);
+            MaximumHeroCount = reader.ReadByte("Hero", "MaximumCount", MaximumHeroCount);
+            for (int i = 0; i < Hero_CanCreateClass.Length; i++)
+                Hero_CanCreateClass[i] = reader.ReadBoolean("Hero", $"CanCreate{Enum.GetName(typeof(MirClass), i)}", true);
+            HeroSealItemName = reader.ReadString("Hero", "SealItemName", HeroSealItemName);
+            HeroMaximumSealCount = reader.ReadUInt16("Hero", "MaximumSealCount", HeroMaximumSealCount);
+        }
+        public static void SaveHeroSettings()
+        {
+            File.Delete(Path.Combine(ConfigPath, "HeroSettings.ini"));
+            InIReader reader = new InIReader(Path.Combine(ConfigPath, "HeroSettings.ini"));
+
+            reader.Write("Hero", "AllowNewHero", AllowNewHero);
+            reader.Write("Hero", "MinimumLevel", Hero_RequiredLevel);
+            reader.Write("Hero", "MaximumCount", MaximumHeroCount);
+            for (int i = 0; i < Hero_CanCreateClass.Length; i++)
+                reader.Write("Hero", $"CanCreate{Enum.GetName(typeof(MirClass), i)}", Hero_CanCreateClass[i]);
+            reader.Write("Hero", "SealItemName", HeroSealItemName);
+            reader.Write("Hero", "MaximumSealCount", HeroMaximumSealCount);
+        }
+
         public static void LoadGuildSettings()
         {
             if (!File.Exists(Path.Combine(ConfigPath, "GuildSettings.ini")))
@@ -1089,9 +1198,6 @@ namespace Server
             {
                 Guild_BuffList.Add(new GuildBuffInfo(reader, i));
             }
-
-
-
         }
         public static void SaveGuildSettings()
         {

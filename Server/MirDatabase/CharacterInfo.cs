@@ -47,7 +47,7 @@ namespace Server.MirDatabase
         //Mentor
         public int Mentor = 0;
         public DateTime MentorDate;
-        public bool isMentor;
+        public bool IsMentor;
         public long MentorExp = 0;
 
         //Location
@@ -64,6 +64,7 @@ namespace Server.MirDatabase
         public PetMode PMode;
         public bool AllowGroup;
         public bool AllowTrade;
+        public bool AllowObserve;
 
         public int PKPoints;
 
@@ -87,7 +88,6 @@ namespace Server.MirDatabase
         public List<MailInfo> Mail = new List<MailInfo>();
         public List<FriendInfo> Friends = new List<FriendInfo>();
 
-        //IntelligentCreature
         public List<UserIntelligentCreature> IntelligentCreatures = new List<UserIntelligentCreature>();
         public int PearlCount;
 
@@ -102,27 +102,37 @@ namespace Server.MirDatabase
 
         public Dictionary<int, int> GSpurchases = new Dictionary<int, int>();
         public int[] Rank = new int[2];//dont save this in db!(and dont send it to clients :p)
+        
+        public int MaximumHeroCount = 1;
+        public HeroInfo[] Heroes;
+        public int CurrentHeroIndex;
+        public bool HeroSpawned;
+        public HeroBehaviour HeroBehaviour;
 
-        public CharacterInfo()
-        {
-        }
+        public CharacterInfo() { }
 
         public CharacterInfo(ClientPackets.NewCharacter p, MirConnection c)
         {
             Name = p.Name;
             Class = p.Class;
             Gender = p.Gender;
+            Heroes = new HeroInfo[MaximumHeroCount];
 
             CreationIP = c.IPAddress;
             CreationDate = Envir.Now;
         }
 
-        public CharacterInfo(BinaryReader reader)
+        public CharacterInfo(BinaryReader reader, int version, int customVersion)
+        {
+            Load(reader, version, customVersion);            
+        }
+
+        public virtual void Load(BinaryReader reader, int version, int customVersion)
         {
             Index = reader.ReadInt32();
             Name = reader.ReadString();
 
-            if (Envir.LoadVersion < 62)
+            if (version < 62)
             {
                 Level = (ushort)reader.ReadByte();
             }
@@ -130,9 +140,9 @@ namespace Server.MirDatabase
             {
                 Level = reader.ReadUInt16();
             }
- 
-            Class = (MirClass) reader.ReadByte();
-            Gender = (MirGender) reader.ReadByte();
+
+            Class = (MirClass)reader.ReadByte();
+            Gender = (MirGender)reader.ReadByte();
             Hair = reader.ReadByte();
 
             CreationIP = reader.ReadString();
@@ -145,7 +155,7 @@ namespace Server.MirDatabase
             LastIP = reader.ReadString();
             LastLogoutDate = DateTime.FromBinary(reader.ReadInt64());
 
-            if (Envir.LoadVersion > 81)
+            if (version > 81)
             {
                 LastLoginDate = DateTime.FromBinary(reader.ReadInt64());
             }
@@ -159,7 +169,7 @@ namespace Server.MirDatabase
             BindMapIndex = reader.ReadInt32();
             BindLocation = new Point(reader.ReadInt32(), reader.ReadInt32());
 
-            if (Envir.LoadVersion <= 84)
+            if (version <= 84)
             {
                 HP = reader.ReadUInt16();
                 MP = reader.ReadUInt16();
@@ -171,11 +181,11 @@ namespace Server.MirDatabase
             }
 
             Experience = reader.ReadInt64();
-            
-            AMode = (AttackMode) reader.ReadByte();
-            PMode = (PetMode) reader.ReadByte();
 
-            if (Envir.LoadVersion > 34)
+            AMode = (AttackMode)reader.ReadByte();
+            PMode = (PetMode)reader.ReadByte();
+
+            if (version > 34)
             {
                 PKPoints = reader.ReadInt32();
             }
@@ -187,41 +197,43 @@ namespace Server.MirDatabase
             for (int i = 0; i < count; i++)
             {
                 if (!reader.ReadBoolean()) continue;
-                UserItem item = new UserItem(reader, Envir.LoadVersion, Envir.LoadCustomVersion);
+                UserItem item = new UserItem(reader, version, customVersion);
                 if (Envir.BindItem(item) && i < Inventory.Length)
+                {
                     Inventory[i] = item;
+                }
             }
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
             {
                 if (!reader.ReadBoolean()) continue;
-                UserItem item = new UserItem(reader, Envir.LoadVersion, Envir.LoadCustomVersion);
+                UserItem item = new UserItem(reader, version, customVersion);
                 if (Envir.BindItem(item) && i < Equipment.Length)
+                {
                     Equipment[i] = item;
+                }
             }
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
             {
                 if (!reader.ReadBoolean()) continue;
-                UserItem item = new UserItem(reader, Envir.LoadVersion, Envir.LoadCustomVersion);
+                UserItem item = new UserItem(reader, version, customVersion);
                 if (Envir.BindItem(item) && i < QuestInventory.Length)
+                {
                     QuestInventory[i] = item;
+                }
             }
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
             {
-                UserMagic magic = new UserMagic(reader);
+                UserMagic magic = new UserMagic(reader, version, customVersion);
                 if (magic.Info == null) continue;
-                Magics.Add(magic);
-            }
 
-            //reset all magic cooldowns on char loading < stops ppl from having none working skills after a server crash
-            for (int i = 0; i < Magics.Count; i++)
-            {
-                Magics[i].CastTime = int.MinValue;
+                magic.CastTime = int.MinValue;
+                Magics.Add(magic);
             }
 
             Thrusting = reader.ReadBoolean();
@@ -233,48 +245,57 @@ namespace Server.MirDatabase
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
-                Pets.Add(new PetInfo(reader));
+            {
+                Pets.Add(new PetInfo(reader, version, customVersion));
+            }
 
             AllowGroup = reader.ReadBoolean();
 
             for (int i = 0; i < Globals.FlagIndexCount; i++)
+            {
                 Flags[i] = reader.ReadBoolean();
+            }
 
             GuildIndex = reader.ReadInt32();
 
             AllowTrade = reader.ReadBoolean();
+            if (version > 104)
+                AllowObserve = reader.ReadBoolean();
 
             count = reader.ReadInt32();
 
             for (int i = 0; i < count; i++)
             {
-                QuestProgressInfo quest = new QuestProgressInfo(reader);
+                QuestProgressInfo quest = new QuestProgressInfo(reader, version, customVersion);
                 if (Envir.BindQuest(quest))
+                {
                     CurrentQuests.Add(quest);
+                }
             }
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
             {
-                Buff buff = new Buff(reader);
+                Buff buff = new Buff(reader, version, customVersion);
 
                 Buffs.Add(buff);
             }
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
-                Mail.Add(new MailInfo(reader, Envir.LoadVersion, Envir.LoadCustomVersion));
+            {
+                Mail.Add(new MailInfo(reader, version, customVersion));
+            }
 
-            //IntelligentCreature
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
             {
-                UserIntelligentCreature creature = new UserIntelligentCreature(reader);
+                UserIntelligentCreature creature = new UserIntelligentCreature(reader, version, customVersion);
                 if (creature.Info == null) continue;
                 IntelligentCreatures.Add(creature);
             }
 
-            if (Envir.LoadVersion == 45)
+            if (version == 45)
             {
                 var old1 = (IntelligentCreatureType)reader.ReadByte();
                 var old2 = reader.ReadBoolean();
@@ -284,24 +305,36 @@ namespace Server.MirDatabase
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
+            {
                 CompletedQuests.Add(reader.ReadInt32());
+            }
 
-            if (reader.ReadBoolean()) CurrentRefine = new UserItem(reader, Envir.LoadVersion, Envir.LoadCustomVersion);
+            if (reader.ReadBoolean())
+            {
+                CurrentRefine = new UserItem(reader, version, customVersion);
+            }
+
             if (CurrentRefine != null)
+            {
                 Envir.BindItem(CurrentRefine);
+            }
 
             CollectTime = reader.ReadInt64();
             CollectTime += Envir.Time;
 
             count = reader.ReadInt32();
             for (int i = 0; i < count; i++)
-                Friends.Add(new FriendInfo(reader));
+            {
+                Friends.Add(new FriendInfo(reader, version, customVersion));
+            }
 
-            if (Envir.LoadVersion > 75)
+            if (version > 75)
             {
                 count = reader.ReadInt32();
                 for (var i = 0; i < count; i++)
-                    RentedItems.Add(new ItemRentalInformation(reader));
+                {
+                    RentedItems.Add(new ItemRentalInformation(reader, version, customVersion));
+                }
 
                 HasRentedItem = reader.ReadBoolean();
             }
@@ -310,10 +343,10 @@ namespace Server.MirDatabase
             MarriedDate = DateTime.FromBinary(reader.ReadInt64());
             Mentor = reader.ReadInt32();
             MentorDate = DateTime.FromBinary(reader.ReadInt64());
-            isMentor = reader.ReadBoolean();
+            IsMentor = reader.ReadBoolean();
             MentorExp = reader.ReadInt64();
 
-            if (Envir.LoadVersion >= 63)
+            if (version >= 63)
             {
                 int logCount = reader.ReadInt32();
 
@@ -322,9 +355,37 @@ namespace Server.MirDatabase
                     GSpurchases.Add(reader.ReadInt32(), reader.ReadInt32());
                 }
             }
+
+            if (version > 98)
+            {
+                MaximumHeroCount = reader.ReadInt32();
+                Heroes = new HeroInfo[MaximumHeroCount];
+                if (version > 102)
+                {
+                    for (int i = 0; i < MaximumHeroCount; i++)
+                    {
+                        int heroIndex = reader.ReadInt32();
+                        if (heroIndex > 0)
+                            Heroes[i] = Envir.GetHeroInfo(heroIndex);
+                    }
+                }
+                else
+                {
+                    for (int i = 0; i < MaximumHeroCount; i++)
+                        Heroes[i] = new HeroInfo(reader, version, customVersion);
+                }
+
+                if (version < 104) reader.ReadInt32();
+                CurrentHeroIndex = reader.ReadInt32();
+                HeroSpawned = reader.ReadBoolean();
+            }
+            else Heroes = new HeroInfo[MaximumHeroCount];
+
+            if (version > 100)
+                HeroBehaviour = (HeroBehaviour)reader.ReadByte();
         }
 
-        public void Save(BinaryWriter writer)
+        public virtual void Save(BinaryWriter writer)
         {
             writer.Write(Index);
             writer.Write(Name);
@@ -393,7 +454,9 @@ namespace Server.MirDatabase
 
             writer.Write(Magics.Count);
             for (int i = 0; i < Magics.Count; i++)
+            {
                 Magics[i].Save(writer);
+            }
 
             writer.Write(Thrusting);
             writer.Write(HalfMoon);
@@ -403,19 +466,27 @@ namespace Server.MirDatabase
 
             writer.Write(Pets.Count);
             for (int i = 0; i < Pets.Count; i++)
+            {
                 Pets[i].Save(writer);
+            }
 
             writer.Write(AllowGroup);
 
             for (int i = 0; i < Flags.Length; i++)
+            {
                 writer.Write(Flags[i]);
+            }
+
             writer.Write(GuildIndex);
 
             writer.Write(AllowTrade);
+            writer.Write(AllowObserve);
 
             writer.Write(CurrentQuests.Count);
             for (int i = 0; i < CurrentQuests.Count; i++)
+            {
                 CurrentQuests[i].Save(writer);
+            }
 
             writer.Write(Buffs.Count);
             for (int i = 0; i < Buffs.Count; i++)
@@ -425,27 +496,39 @@ namespace Server.MirDatabase
 
             writer.Write(Mail.Count);
             for (int i = 0; i < Mail.Count; i++)
+            {
                 Mail[i].Save(writer);
+            }
 
-            //IntelligentCreature
             writer.Write(IntelligentCreatures.Count);
             for (int i = 0; i < IntelligentCreatures.Count; i++)
+            {
                 IntelligentCreatures[i].Save(writer);
+            }
+
             writer.Write(PearlCount);
 
             writer.Write(CompletedQuests.Count);
             for (int i = 0; i < CompletedQuests.Count; i++)
+            {
                 writer.Write(CompletedQuests[i]);
+            }
 
 
             writer.Write(CurrentRefine != null);
             if (CurrentRefine != null)
+            {
                 CurrentRefine.Save(writer);
+            }
 
             if ((CollectTime - Envir.Time) < 0)
+            {
                 CollectTime = 0;
+            }
             else
+            {
                 CollectTime -= Envir.Time;
+            }
 
             writer.Write(CollectTime);
 
@@ -458,7 +541,9 @@ namespace Server.MirDatabase
 
             writer.Write(RentedItems.Count);
             foreach (var rentedItemInformation in RentedItems)
+            {
                 rentedItemInformation.Save(writer);
+            }
 
             writer.Write(HasRentedItem);
 
@@ -466,7 +551,7 @@ namespace Server.MirDatabase
             writer.Write(MarriedDate.ToBinary());
             writer.Write(Mentor);
             writer.Write(MentorDate.ToBinary());
-            writer.Write(isMentor);
+            writer.Write(IsMentor);
             writer.Write(MentorExp);
 
             writer.Write(GSpurchases.Count);
@@ -476,6 +561,13 @@ namespace Server.MirDatabase
                 writer.Write(item.Key);
                 writer.Write(item.Value);
             }
+
+            writer.Write(MaximumHeroCount);
+            for (int i = 0; i < Heroes.Length; i++)
+                writer.Write(Heroes[i] != null ? Heroes[i].Index : 0);            
+            writer.Write(CurrentHeroIndex);
+            writer.Write(HeroSpawned);
+            writer.Write((byte)HeroBehaviour);
         }
 
         public SelectInfo ToSelectInfo()
@@ -494,17 +586,24 @@ namespace Server.MirDatabase
         public bool CheckHasIntelligentCreature(IntelligentCreatureType petType)
         {
             for (int i = 0; i < IntelligentCreatures.Count; i++)
+            {
                 if (IntelligentCreatures[i].PetType == petType) return true;
+            }
+
             return false;
         }
-        public int ResizeInventory()
+        public virtual int ResizeInventory()
         {
             if (Inventory.Length >= 86) return Inventory.Length;
 
             if (Inventory.Length == 46)
+            {
                 Array.Resize(ref Inventory, Inventory.Length + 8);
+            }
             else
+            {
                 Array.Resize(ref Inventory, Inventory.Length + 4);
+            }
 
             return Inventory.Length;
         }
@@ -528,12 +627,12 @@ namespace Server.MirDatabase
             MaxPetLevel = ob.MaxPetLevel;
         }
 
-        public PetInfo(BinaryReader reader)
+        public PetInfo(BinaryReader reader, int version, int customVersion)
         {
             MonsterIndex = reader.ReadInt32();
             if (MonsterIndex == 271) MonsterIndex = 275;
 
-            if (Envir.LoadVersion <= 84)
+            if (version <= 84)
             {
                 HP = (int)reader.ReadUInt32();
             }
@@ -559,7 +658,7 @@ namespace Server.MirDatabase
 
     public class MountInfo
     {
-        public PlayerObject Player;
+        public HumanObject Player;
         public short MountType = -1;
 
         public bool CanRide
@@ -600,7 +699,7 @@ namespace Server.MirDatabase
         }
 
 
-        public MountInfo(PlayerObject ob)
+        public MountInfo(HumanObject ob)
         {
             Player = ob;
         }
@@ -620,8 +719,10 @@ namespace Server.MirDatabase
         {
             get 
             {
-                if (_Info == null) 
+                if (_Info == null)
+                {
                     _Info = Envir.GetCharacterInfo(Index);
+                }
 
                 return _Info;
             }
@@ -637,7 +738,7 @@ namespace Server.MirDatabase
             Memo = "";
         }
 
-        public FriendInfo(BinaryReader reader)
+        public FriendInfo(BinaryReader reader, int version, int customVersion)
         {
             Index = reader.ReadInt32();
             Blocked = reader.ReadBoolean();
@@ -660,192 +761,6 @@ namespace Server.MirDatabase
                 Blocked = Blocked,
                 Memo = Memo,
                 Online = Info.Player != null && Info.Player.Node != null
-            };
-        }
-    }
-
-    public class IntelligentCreatureInfo
-    {
-        public static List<IntelligentCreatureInfo> Creatures = new List<IntelligentCreatureInfo>();
-
-        public IntelligentCreatureType PetType;
-
-        public int Icon;
-        public int MinimalFullness = 1000;
-
-        public bool MousePickupEnabled = false;
-        public int MousePickupRange = 0;
-        public bool AutoPickupEnabled = false;
-        public int AutoPickupRange = 0;
-        public bool SemiAutoPickupEnabled = false;
-        public int SemiAutoPickupRange = 0;
-
-        public bool CanProduceBlackStone = false;
-
-        static IntelligentCreatureInfo()
-        {
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabyPig, Icon = 500, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 3, MinimalFullness = 4000 };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Chick, Icon = 501, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 7, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 7, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Kitten, Icon = 502, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 3, MinimalFullness = 6000 };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabySkeleton, Icon = 503, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 7, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 7, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Baekdon, Icon = 504, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 7, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 7, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Wimaen, Icon = 505, MousePickupEnabled = true, MousePickupRange = 7, AutoPickupEnabled = true, AutoPickupRange = 5, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 5, MinimalFullness = 5000 };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BlackKitten, Icon = 506, MousePickupEnabled = true, MousePickupRange = 7, AutoPickupEnabled = true, AutoPickupRange = 5, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 5, MinimalFullness = 5000 };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabyDragon, Icon = 507, MousePickupEnabled = true, MousePickupRange = 7, AutoPickupEnabled = true, AutoPickupRange = 5, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 5, MinimalFullness = 7000 };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.OlympicFlame, Icon = 508, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabySnowMan, Icon = 509, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Frog, Icon = 510, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.BabyMonkey, Icon = 511, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.AngryBird, Icon = 512, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.Foxey, Icon = 513, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-             new IntelligentCreatureInfo { PetType = IntelligentCreatureType.MedicalRat, Icon = 514, MousePickupEnabled = true, MousePickupRange = 11, AutoPickupEnabled = true, AutoPickupRange = 11, SemiAutoPickupEnabled = true, SemiAutoPickupRange = 11, CanProduceBlackStone = true };
-        }
-
-        public IntelligentCreatureInfo()
-        {
-            Creatures.Add(this);
-        }
-
-        public static IntelligentCreatureInfo GetCreatureInfo(IntelligentCreatureType petType)
-        {
-            for (int i = 0; i < Creatures.Count; i++)
-            {
-                IntelligentCreatureInfo info = Creatures[i];
-                if (info.PetType != petType) continue;
-                return info;
-            }
-            return null;
-        }
-    }
-    public class UserIntelligentCreature
-    {
-        public IntelligentCreatureType PetType;
-        public IntelligentCreatureInfo Info;
-        public IntelligentCreatureItemFilter Filter;
-
-        public IntelligentCreaturePickupMode petMode = IntelligentCreaturePickupMode.SemiAutomatic;
-
-        public string CustomName;
-        public int Fullness;
-        public int SlotIndex;
-        public DateTime Expire;
-        public long BlackstoneTime = 0;
-        public long MaintainFoodTime = 0;
-
-        public UserIntelligentCreature(IntelligentCreatureType creatureType, int slot, byte effect = 0)
-        {
-            PetType = creatureType;
-            Info = IntelligentCreatureInfo.GetCreatureInfo(PetType);
-            CustomName = Envir.Main.GetMonsterInfo(64, (byte)PetType)?.Name ?? PetType.ToString();
-            Fullness = 7500;//starts at 75% food
-            SlotIndex = slot;
-
-            if (effect > 0) Expire = DateTime.Now.AddDays(effect);//effect holds the amount in days
-            else Expire = DateTime.MinValue;//permanent
-
-            BlackstoneTime = 0;
-            MaintainFoodTime = 0;
-
-            Filter = new IntelligentCreatureItemFilter();
-        }
-
-        public UserIntelligentCreature(BinaryReader reader)
-        {
-            PetType = (IntelligentCreatureType)reader.ReadByte();
-            Info = IntelligentCreatureInfo.GetCreatureInfo(PetType);
-
-            CustomName = reader.ReadString();
-            Fullness = reader.ReadInt32();
-            SlotIndex = reader.ReadInt32();
-
-            var expireTime = reader.ReadInt64();
-
-            if (expireTime == -9999)
-            {
-                Expire = DateTime.MinValue;
-            }
-            else
-            {
-                Expire = DateTime.Now.AddSeconds(expireTime);
-            }
-
-            BlackstoneTime = reader.ReadInt64();
-
-            petMode = (IntelligentCreaturePickupMode)reader.ReadByte();
-
-            Filter = new IntelligentCreatureItemFilter(reader);
-            if (Envir.LoadVersion > 48)
-            {
-                Filter.PickupGrade = (ItemGrade)reader.ReadByte();
-                
-                MaintainFoodTime = reader.ReadInt64();//maintain food buff
-            }
-        }
-
-        public void Save(BinaryWriter writer)
-        {
-            writer.Write((byte)PetType);
-
-            writer.Write(CustomName);
-            writer.Write(Fullness);
-            writer.Write(SlotIndex);
-
-            if (Expire == DateTime.MinValue)
-            {
-                writer.Write((long)-9999);
-            }
-            else
-            {
-                writer.Write((long)(Expire - DateTime.Now).TotalSeconds);
-            }
-
-            writer.Write(BlackstoneTime);
-
-            writer.Write((byte)petMode);
-
-            Filter.Save(writer);
-            writer.Write((byte)Filter.PickupGrade);//since Envir.Version 49
-
-            writer.Write(MaintainFoodTime);//maintain food buff
-
-        }
-
-        public Packet GetInfo()
-        {
-            return new ServerPackets.NewIntelligentCreature
-            {
-                Creature = CreateClientIntelligentCreature()
-            };
-        }
-
-        public ClientIntelligentCreature CreateClientIntelligentCreature()
-        {
-            return new ClientIntelligentCreature
-            {
-                PetType = PetType,
-                Icon = Info.Icon,
-                CustomName = CustomName,
-                Fullness = Fullness,
-                SlotIndex = SlotIndex,
-                Expire = Expire,
-                BlackstoneTime = BlackstoneTime,
-                MaintainFoodTime = MaintainFoodTime,
-
-                petMode = petMode,
-
-                CreatureRules = new IntelligentCreatureRules
-                {
-                    MinimalFullness = Info.MinimalFullness,
-                    MousePickupEnabled = Info.MousePickupEnabled,
-                    MousePickupRange = Info.MousePickupRange,
-                    AutoPickupEnabled = Info.AutoPickupEnabled,
-                    AutoPickupRange = Info.AutoPickupRange,
-                    SemiAutoPickupEnabled = Info.SemiAutoPickupEnabled,
-                    SemiAutoPickupRange = Info.SemiAutoPickupRange,
-                    CanProduceBlackStone = Info.CanProduceBlackStone
-                },
-
-                Filter = Filter
             };
         }
     }

@@ -139,13 +139,15 @@ namespace Server.MirObjects.Monsters
 
             Broadcast(new S.ObjectDied { ObjectID = ObjectID, Direction = Direction, Location = CurrentLocation, Type = (byte)(Master != null ? 1 : 0) });
 
-            if (EXPOwner != null && Master == null && EXPOwner.Race == ObjectType.Player) EXPOwner.WinExp(Experience);
+            if (EXPOwner != null && EXPOwner.Node != null && Master == null && EXPOwner.Race == ObjectType.Player) EXPOwner.WinExp(Experience);
 
             if (Respawn != null)
                 Respawn.Count--;
 
             if (Master == null)
                 Drop();
+
+            Master = null;
 
             PoisonList.Clear();
             Envir.MonsterCount--;

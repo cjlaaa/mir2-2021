@@ -69,6 +69,14 @@ namespace Server.Database
             this.ItemDurability = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ItemPrice = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.ItemToolTip = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.NeedIdentify = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.ShowGroupPickup = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.GlobalDropNotify = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.ClassBased = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.LevelBased = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.CanMine = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.CanFastRun = new System.Windows.Forms.DataGridViewCheckBoxColumn();
+            this.CanAwakening = new System.Windows.Forms.DataGridViewCheckBoxColumn();
             ((System.ComponentModel.ISupportInitialize)(this.itemInfoGridView)).BeginInit();
             this.panel1.SuspendLayout();
             this.panel3.SuspendLayout();
@@ -103,7 +111,15 @@ namespace Server.Database
             this.ItemLightIntensity,
             this.ItemDurability,
             this.ItemPrice,
-            this.ItemToolTip});
+            this.ItemToolTip,
+            this.NeedIdentify,
+            this.ShowGroupPickup,
+            this.GlobalDropNotify,
+            this.ClassBased,
+            this.LevelBased,
+            this.CanMine,
+            this.CanFastRun,
+            this.CanAwakening});
             dataGridViewCellStyle2.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleCenter;
             dataGridViewCellStyle2.BackColor = System.Drawing.SystemColors.Window;
             dataGridViewCellStyle2.Font = new System.Drawing.Font("Microsoft Sans Serif", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
@@ -432,6 +448,54 @@ namespace Server.Database
             this.ItemToolTip.Name = "ItemToolTip";
             this.ItemToolTip.Width = 68;
             // 
+            // NeedIdentify
+            // 
+            this.NeedIdentify.DataPropertyName = "NeedIdentify";
+            this.NeedIdentify.HeaderText = "Need Identify";
+            this.NeedIdentify.Name = "NeedIdentify";
+            // 
+            // ShowGroupPickup
+            // 
+            this.ShowGroupPickup.DataPropertyName = "ShowGroupPickup";
+            this.ShowGroupPickup.HeaderText = "Show Group Pickup";
+            this.ShowGroupPickup.Name = "ShowGroupPickup";
+            // 
+            // GlobalDropNotify
+            // 
+            this.GlobalDropNotify.DataPropertyName = "GlobalDropNotify";
+            this.GlobalDropNotify.HeaderText = "Global Drop Notify";
+            this.GlobalDropNotify.Name = "GlobalDropNotify";
+            // 
+            // ClassBased
+            // 
+            this.ClassBased.DataPropertyName = "ClassBased";
+            this.ClassBased.HeaderText = "Class Based";
+            this.ClassBased.Name = "ClassBased";
+            // 
+            // LevelBased
+            // 
+            this.LevelBased.DataPropertyName = "LevelBased";
+            this.LevelBased.HeaderText = "Level Based";
+            this.LevelBased.Name = "LevelBased";
+            // 
+            // CanMine
+            // 
+            this.CanMine.DataPropertyName = "CanMine";
+            this.CanMine.HeaderText = "Can Mine";
+            this.CanMine.Name = "CanMine";
+            // 
+            // CanFastRun
+            // 
+            this.CanFastRun.DataPropertyName = "CanFastRun";
+            this.CanFastRun.HeaderText = "Can FastRun";
+            this.CanFastRun.Name = "CanFastRun";
+            // 
+            // CanAwakening
+            // 
+            this.CanAwakening.DataPropertyName = "CanAwakening";
+            this.CanAwakening.HeaderText = "Can Awakening";
+            this.CanAwakening.Name = "CanAwakening";
+            // 
             // ItemInfoFormNew
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -493,5 +557,13 @@ namespace Server.Database
         private System.Windows.Forms.DataGridViewTextBoxColumn ItemDurability;
         private System.Windows.Forms.DataGridViewTextBoxColumn ItemPrice;
         private System.Windows.Forms.DataGridViewTextBoxColumn ItemToolTip;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn NeedIdentify;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn ShowGroupPickup;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn GlobalDropNotify;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn ClassBased;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn LevelBased;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn CanMine;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn CanFastRun;
+        private System.Windows.Forms.DataGridViewCheckBoxColumn CanAwakening;
     }
 }

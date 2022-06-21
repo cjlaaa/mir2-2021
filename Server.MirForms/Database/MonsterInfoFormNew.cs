@@ -27,6 +27,8 @@ namespace Server.Database
         {
             InitializeComponent();
 
+            SetDoubleBuffered(monsterInfoGridView);
+
             InitializeItemInfoGridView();
 
             CreateDynamicColumns();
@@ -34,6 +36,17 @@ namespace Server.Database
             PopulateTable();
 
             rbtnViewBasic.Checked = true;
+        }
+
+        public static void SetDoubleBuffered(System.Windows.Forms.Control c)
+        {
+            System.Reflection.PropertyInfo aProp =
+                  typeof(System.Windows.Forms.Control).GetProperty(
+                        "DoubleBuffered",
+                        System.Reflection.BindingFlags.NonPublic |
+                        System.Reflection.BindingFlags.Instance);
+
+            aProp.SetValue(c, true, null);
         }
 
         private void InitializeItemInfoGridView()
@@ -54,6 +67,7 @@ namespace Server.Database
             MonsterAutoRev.ValueType = typeof(bool);
             MonsterUndead.ValueType = typeof(bool);
             MonsterCanTame.ValueType = typeof(bool);
+            MonsterDropPath.ValueType = typeof(string);
 
             //Basic
             this.MonsterImage.ValueType = typeof(Monster);
@@ -148,6 +162,7 @@ namespace Server.Database
                 row["MonsterCanTame"] = item.CanTame;
                 row["MonsterUndead"] = item.Undead;
                 row["MonsterAutoRev"] = item.AutoRev;
+                row["MonsterDropPath"] = item.DropPath;
 
                 foreach (Stat stat in StatEnums)
                 {
@@ -187,7 +202,9 @@ namespace Server.Database
 
             foreach (DataGridViewRow row in monsterInfoGridView.Rows)
             {
-                if (string.IsNullOrEmpty((string)row.Cells["MonsterName"].Value))
+                var name = row.Cells["MonsterName"].Value;
+
+                if (name == null || name.GetType() == typeof(System.DBNull) || string.IsNullOrWhiteSpace((string)name))
                 {
                     continue;
                 }
@@ -224,6 +241,7 @@ namespace Server.Database
                 monster.CanTame = (bool)row.Cells["MonsterCanTame"].Value;
                 monster.Undead = (bool)row.Cells["MonsterUndead"].Value;
                 monster.AutoRev = (bool)row.Cells["MonsterAutoRev"].Value;
+                monster.DropPath = (string)row.Cells["MonsterDropPath"].Value;
 
                 monster.Stats.Clear();
 
@@ -413,17 +431,17 @@ namespace Server.Database
 
                             var dataRow = FindRowByMonsterName(cells[0]);
 
-                            if (dataRow == null)
-                            {
-                                dataRow = Table.NewRow();
-
-                                Table.Rows.Add(dataRow);
-                            }
-
-                            monsterInfoGridView.BeginEdit(true);
-
                             try
                             {
+                                monsterInfoGridView.BeginEdit(true);
+
+                                if (dataRow == null)
+                                {
+                                    dataRow = Table.NewRow();
+
+                                    Table.Rows.Add(dataRow);
+                                }
+
                                 for (int j = 0; j < columns.Length; j++)
                                 {
                                     var column = columns[j];
@@ -451,15 +469,19 @@ namespace Server.Database
                                         dataRow[column] = cells[j];
                                     }
                                 }
+
+                                dataRow["Modified"] = true;
+
+                                monsterInfoGridView.EndEdit();
                             }
                             catch (Exception ex)
                             {
                                 fileError = true;
+                                monsterInfoGridView.EndEdit();
+
                                 MessageBox.Show($"Error when importing item {cells[0]}. {ex.Message}");
                                 continue;
                             }
-
-                            //monsterInfoGridView.EndEdit();
 
                             rowsEdited++;
 
@@ -471,6 +493,7 @@ namespace Server.Database
 
                         if (!fileError)
                         {
+                            monsterInfoGridView.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
                             MessageBox.Show($"{rowsEdited} monsters have been imported.");
                         }
                     }
@@ -572,6 +595,7 @@ namespace Server.Database
             row.Cells["MonsterCanTame"].Value = (bool)true;
             row.Cells["MonsterUndead"].Value = (bool)false;
             row.Cells["MonsterAutoRev"].Value = (bool)true;
+            row.Cells["MonsterDropPath"].Value = "";
 
             foreach (Stat stat in StatEnums)
             {

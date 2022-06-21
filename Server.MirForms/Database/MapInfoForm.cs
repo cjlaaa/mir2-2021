@@ -35,7 +35,7 @@ namespace Server
             for (int i = 0; i < Envir.MonsterInfoList.Count; i++) MonsterInfoComboBox.Items.Add(Envir.MonsterInfoList[i]);
 
             ConquestComboBox.Items.Add(new ListItem("None", "0"));
-            for (int i = 0; i < Envir.ConquestInfos.Count; i++) ConquestComboBox.Items.Add(Envir.ConquestInfos[i]);
+            for (int i = 0; i < Envir.ConquestInfoList.Count; i++) ConquestComboBox.Items.Add(Envir.ConquestInfoList[i]);
 
             UpdateInterface();
         }
@@ -377,6 +377,7 @@ namespace Server
                 ConquestComboBox.SelectedIndex = 0;
                 DestXTextBox.Text = string.Empty;
                 DestYTextBox.Text = string.Empty;
+                BigMapIconTextBox.Text = string.Empty;
                 return;
             }
 
@@ -405,6 +406,7 @@ namespace Server
                 ConquestComboBox.SelectedIndex = 0;
                 DestXTextBox.Text = string.Empty;
                 DestYTextBox.Text = string.Empty;
+                BigMapIconTextBox.Text = string.Empty;
                 return;
             }
 
@@ -416,11 +418,13 @@ namespace Server
             SourceYTextBox.Text = info.Source.Y.ToString();
             NeedHoleMCheckBox.Checked = info.NeedHole;
             NeedMoveMCheckBox.Checked = info.NeedMove;
+            ShowBigMapCheckBox.Checked = info.ShowOnBigMap;
             DestMapComboBox.SelectedItem = Envir.MapInfoList.FirstOrDefault(x => x.Index == info.MapIndex);
             DestXTextBox.Text = info.Destination.X.ToString();
             DestYTextBox.Text = info.Destination.Y.ToString();
+            BigMapIconTextBox.Text = info.Icon.ToString();
 
-            ConquestComboBox.SelectedItem = Envir.ConquestInfos.FirstOrDefault(x => x.Index == info.ConquestIndex);
+            ConquestComboBox.SelectedItem = Envir.ConquestInfoList.FirstOrDefault(x => x.Index == info.ConquestIndex);
             if (ConquestComboBox.SelectedItem == null) ConquestComboBox.SelectedIndex = 0;
 
             for (int i = 1; i < _selectedMovementInfos.Count; i++)
@@ -432,7 +436,8 @@ namespace Server
                 DestMapComboBox.SelectedItem = Envir.MapInfoList.FirstOrDefault(x => x.Index == info.MapIndex);
                 DestXTextBox.Text = info.Destination.X.ToString();
                 DestYTextBox.Text = info.Destination.Y.ToString();
-                ConquestComboBox.SelectedItem = Envir.ConquestInfos.FirstOrDefault(x => x.Index == info.ConquestIndex);
+                ConquestComboBox.SelectedItem = Envir.ConquestInfoList.FirstOrDefault(x => x.Index == info.ConquestIndex);
+                BigMapIconTextBox.Text = info.Icon.ToString();
 
                 if (SourceXTextBox.Text != info.Source.X.ToString()) SourceXTextBox.Text = string.Empty;
                 if (SourceYTextBox.Text != info.Source.Y.ToString()) SourceYTextBox.Text = string.Empty;
@@ -442,7 +447,8 @@ namespace Server
                 if (DestXTextBox.Text != info.Destination.X.ToString()) DestXTextBox.Text = string.Empty;
                 if (DestYTextBox.Text != info.Destination.Y.ToString()) DestYTextBox.Text = string.Empty;
 
-                if (ConquestComboBox.SelectedItem != Envir.ConquestInfos.FirstOrDefault(x => x.Index == info.ConquestIndex)) ConquestComboBox.SelectedItem = null;
+                if (BigMapIconTextBox.Text != info.Icon.ToString()) BigMapIconTextBox.Text = string.Empty;
+                if (ConquestComboBox.SelectedItem != Envir.ConquestInfoList.FirstOrDefault(x => x.Index == info.ConquestIndex)) ConquestComboBox.SelectedItem = null;
             }
 
         }
@@ -1419,7 +1425,7 @@ namespace Server
                         try
                         {
                             string movement =
-                                $"{_selectedMapInfos[i].FileName} {_selectedMapInfos[i].Movements[j].Source.X + "," + _selectedMapInfos[i].Movements[j].Source.Y} {"->"} {Envir.MapInfoList[_selectedMapInfos[i].Movements[j].MapIndex - 1].FileName} {_selectedMapInfos[i].Movements[j].Destination.X + "," + _selectedMapInfos[i].Movements[j].Destination.Y} {(_selectedMapInfos[i].Movements[j].NeedHole ? "NEEDHOLE " : "") + (_selectedMapInfos[i].Movements[j].NeedMove ? "NEEDMOVE " : "") + (_selectedMapInfos[i].Movements[j].ConquestIndex > 0 ? "NEEDCONQUEST(" + _selectedMapInfos[i].Movements[j].ConquestIndex + ")" : "")}";
+                                $"{_selectedMapInfos[i].FileName} {_selectedMapInfos[i].Movements[j].Source.X + "," + _selectedMapInfos[i].Movements[j].Source.Y} {"->"} {Envir.MapInfoList[_selectedMapInfos[i].Movements[j].MapIndex - 1].FileName} {_selectedMapInfos[i].Movements[j].Destination.X + "," + _selectedMapInfos[i].Movements[j].Destination.Y} {(_selectedMapInfos[i].Movements[j].NeedHole ? "NEEDHOLE " : "") + (_selectedMapInfos[i].Movements[j].NeedMove ? "NEEDMOVE " : "") + (_selectedMapInfos[i].Movements[j].ConquestIndex > 0 ? "NEEDCONQUEST(" + _selectedMapInfos[i].Movements[j].ConquestIndex + ")" : "") + (_selectedMapInfos[i].Movements[j].ShowOnBigMap ? "SHOWONBIGMAP " : "") + (_selectedMapInfos[i].Movements[j].Icon > 0 ? "BIGMAPICON(" + _selectedMapInfos[i].Movements[j].Icon + ")" : "")}";
 
                             sw.WriteLine(movement);
                         }
@@ -1480,7 +1486,7 @@ namespace Server
             {
                 try
                 {
-                    int monsterIndex = Envir.MonsterInfoList.Find(a => a.Name.Replace(" ", "") == MirForms.ConvertMonGenInfo.monGenList[i].Name.Replace('*', ' ')).Index;
+                    int monsterIndex = Envir.MonsterInfoList.Find(a => a.Name == MirForms.ConvertMonGenInfo.monGenList[i].Name).Index;
                     if (monsterIndex == -1) continue;
 
                     RespawnInfo respawnInfo = new RespawnInfo
@@ -1491,6 +1497,7 @@ namespace Server
                         Spread = (ushort)MirForms.ConvertMonGenInfo.monGenList[i].Range,
                         Delay = (ushort)MirForms.ConvertMonGenInfo.monGenList[i].Delay,
                         Direction = (byte)MirForms.ConvertMonGenInfo.monGenList[i].Direction,
+                        RoutePath = MirForms.ConvertMonGenInfo.monGenList[i].RoutePath,
                         RespawnIndex = ++Envir.RespawnIndex
                     };
 
@@ -1533,8 +1540,15 @@ namespace Server
 
                         if (mob == null) continue;
 
-                        string Output =
-                            $"{_selectedMapInfos[i].FileName} {_selectedMapInfos[i].Respawns[j].Location.X} {_selectedMapInfos[i].Respawns[j].Location.Y} {mob.Name.Replace(' ', '*')} {_selectedMapInfos[i].Respawns[j].Spread} {_selectedMapInfos[i].Respawns[j].Count} {_selectedMapInfos[i].Respawns[j].Delay} {_selectedMapInfos[i].Respawns[j].Direction}";
+                        string Output = $"{_selectedMapInfos[i].FileName}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Location.X}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Location.Y}" +
+                            $",{mob.Name}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Spread}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Count}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Delay}" +
+                            $",{_selectedMapInfos[i].Respawns[j].Direction}" +
+                            $",{_selectedMapInfos[i].Respawns[j].RoutePath}";
 
                         sw.WriteLine(Output);
                     }
@@ -1708,6 +1722,33 @@ namespace Server
             if (ActiveControl != sender) return;
             for (int i = 0; i < _selectedMapInfos.Count; i++)
                 _selectedMapInfos[i].NoReincarnation = NoReincarnation.Checked;
+        }
+
+        private void ShowBigMapCheckBox_CheckedChanged(object sender, EventArgs e)
+        {
+            if (ActiveControl != sender) return;
+
+            for (int i = 0; i < _selectedMovementInfos.Count; i++)
+                _selectedMovementInfos[i].ShowOnBigMap = ShowBigMapCheckBox.Checked;
+        }
+
+        private void BigMapIconTextBox_TextChanged(object sender, EventArgs e)
+        {
+            if (ActiveControl != sender) return;
+
+            int temp;
+
+            if (!int.TryParse(ActiveControl.Text, out temp))
+            {
+                ActiveControl.BackColor = Color.Red;
+                return;
+            }
+            ActiveControl.BackColor = SystemColors.Window;
+
+            for (int i = 0; i < _selectedMovementInfos.Count; i++)
+                _selectedMovementInfos[i].Icon = temp;
+
+            RefreshMovementList();
         }
     }
 }

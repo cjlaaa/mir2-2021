@@ -77,11 +77,11 @@ namespace Server.MirObjects.Monsters
         {
             base.Despawn();
         }
-        public override int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        public override int Attacked(HumanObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
         {
             CheckDirection();
 
-            if (!Conquest.WarIsOn || attacker.MyGuild != null && Conquest.Owner == attacker.MyGuild.Guildindex) damage = 0;
+            if (!Conquest.WarIsOn || attacker.MyGuild != null && Conquest.GuildInfo.Owner == attacker.MyGuild.Guildindex) damage = 0;
              
             return base.Attacked(attacker, damage, type, damageWeapon);
         }
@@ -120,7 +120,6 @@ namespace Server.MirObjects.Monsters
 
         public override void CloseDoor()
         {
-
             if (Closed) return;
 
             Direction = (MirDirection)(3 - GetDamageLevel());

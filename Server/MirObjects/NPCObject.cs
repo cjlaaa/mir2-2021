@@ -133,11 +133,11 @@ namespace Server.MirObjects
             throw new NotSupportedException();
         }
 
-        public override bool IsAttackTarget(PlayerObject attacker)
+        public override bool IsAttackTarget(HumanObject attacker)
         {
             return false;
         }
-        public override bool IsFriendlyTarget(PlayerObject ally)
+        public override bool IsFriendlyTarget(HumanObject ally)
         {
             throw new NotSupportedException();
         }
@@ -150,12 +150,12 @@ namespace Server.MirObjects
             return false;
         }
 
-        public override Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, params int[] values)
+        public override Buff AddBuff(BuffType type, MapObject owner, int duration, Stats stats, bool refreshStats = true, bool updateOnly = false, params int[] values)
         {
             throw new NotSupportedException();
         }
 
-        public override int Attacked(PlayerObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
+        public override int Attacked(HumanObject attacker, int damage, DefenceType type = DefenceType.ACAgility, bool damageWeapon = true)
         {
             throw new NotSupportedException();
         }
@@ -170,7 +170,7 @@ namespace Server.MirObjects
             throw new NotSupportedException();
         }
 
-        public override void SendHealth(PlayerObject player)
+        public override void SendHealth(HumanObject player)
         {
             throw new NotSupportedException();
         }
@@ -223,7 +223,7 @@ namespace Server.MirObjects
             {
                 VisTime = Envir.Time + (Settings.Minute);
 
-                if (Info.DayofWeek != "" && Info.DayofWeek != DateTime.Now.DayOfWeek.ToString())
+                if (Info.DayofWeek != "" && Info.DayofWeek != Envir.Now.DayOfWeek.ToString())
                 {
                     if (Visible) Hide();
                 }
@@ -231,7 +231,7 @@ namespace Server.MirObjects
                 {
                     int StartTime = ((Info.HourStart * 60) + Info.MinuteStart);
                     int FinishTime = ((Info.HourEnd * 60) + Info.MinuteEnd);
-                    int CurrentTime = ((DateTime.Now.Hour * 60) + DateTime.Now.Minute);
+                    int CurrentTime = ((Envir.Now.Hour * 60) + Envir.Now.Minute);
 
                     if (Info.TimeVisible)
                     {
@@ -303,10 +303,9 @@ namespace Server.MirObjects
 
             for (int i = 0; i < Buffs.Count; i++)
             {
-                if (Buffs[i].ExpireTime >= time && Buffs[i].ExpireTime > Envir.Time) continue;
-                time = Buffs[i].ExpireTime;
+                if (Buffs[i].NextTime >= time && Buffs[i].NextTime > Envir.Time) continue;
+                time = Buffs[i].NextTime;
             }
-
 
             if (OperateTime <= Envir.Time || time < OperateTime)
                 OperateTime = time;
