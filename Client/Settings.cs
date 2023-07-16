@@ -1,7 +1,4 @@
-﻿using System.IO;
-using System;
-using Client.MirSounds;
-using System.Windows.Forms;
+﻿using Client.MirSounds;
 
 namespace Client
 {
@@ -71,7 +68,7 @@ namespace Client
 
         //Graphics
         public static bool FullScreen = true, Borderless = true, TopMost = true, MouseClip = false;
-        public static string FontName = "Tahoma"; //"MS Sans Serif"
+        public static string FontName = "Arial"; //"MS Sans Serif"
         public static float FontSize = 8F;
         public static bool UseMouseCursors = true;
 
@@ -96,14 +93,20 @@ namespace Client
             get { return _volume; }
             set
             {
-                if (_volume == value) return;
+                switch (value)
+                {
+                    case > 100:
+                        _volume = (byte)100;
+                        break;
+                    case <= 0:
+                        _volume = (byte)0;
+                        break;
+                    default:
+                        _volume = value;
+                        break;
+                }
 
-                _volume = (byte) (value > 100 ? 100 : value);
-
-                if (_volume == 0)
-                    SoundManager.Vol = -10000;
-                else 
-                    SoundManager.Vol = (int)(-3000 + (3000 * (_volume / 100M)));
+                SoundManager.Vol = Convert.ToInt32(_volume);
             }
         }
 
@@ -113,14 +116,20 @@ namespace Client
             get { return _musicVolume; }
             set
             {
-                if (_musicVolume == value) return;
+                switch(value)
+                {
+                    case > 100:
+                        _musicVolume = (byte)100;
+                        break;
+                    case <= 0:
+                        _musicVolume = (byte)0;
+                        break;
+                    default:
+                        _musicVolume = value;
+                        break;
+                }
 
-                _musicVolume = (byte)(value > 100 ? 100 : value);
-
-                if (_musicVolume == 0)
-                    SoundManager.MusicVol = -10000;
-                else
-                    SoundManager.MusicVol = (int)(-3000 + (3000 * (_musicVolume / 100M)));
+                SoundManager.MusicVol = Convert.ToInt32(_musicVolume);
             }
         }
 
@@ -183,7 +192,7 @@ namespace Client
         public static string P_Login = string.Empty;
         public static string P_Password = string.Empty;
         public static string P_ServerName = string.Empty;
-        public static string P_BrowserAddress = "https://launcher.mironline.co.uk/web/";
+        public static string P_BrowserAddress = "https://www.lomcn.org/mir2-patchsite/";
         public static string P_Client = Application.StartupPath + "\\";
         public static bool P_AutoStart = false;
         public static int P_Concurrency = 1;

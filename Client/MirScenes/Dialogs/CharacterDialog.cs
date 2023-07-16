@@ -1,7 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Windows.Forms;
-using Client.MirControls;
+﻿using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirObjects;
 using Client.MirSounds;
@@ -32,7 +29,7 @@ namespace Client.MirScenes.Dialogs
             Actor = actor;
             GridType = gridType;
 
-            Index = gridType == MirGridType.HeroEquipment ? 505 : 504;
+            Index = 504;
             Library = Libraries.Title;
             Location = new Point(Settings.ScreenWidth - 264, 0);
             Movable = true;
@@ -661,7 +658,7 @@ namespace Client.MirScenes.Dialogs
         {
             int offSet = Actor.Gender == MirGender.Male ? 0 : 1;
 
-            Index = GridType == MirGridType.HeroEquipment ? 505 : 504;// +offSet;
+            Index = 504;// +offSet;
             CharacterPage.Index = 340 + offSet;
 
             switch (Actor.Class)

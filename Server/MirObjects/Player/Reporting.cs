@@ -1,5 +1,4 @@
-﻿using System;
-using log4net;
+﻿using log4net;
 using System.Runtime.CompilerServices;
 using Server.MirDatabase;
 
@@ -78,6 +77,25 @@ namespace Server.MirObjects
             string message = $"Item {type} - {item.Info.Name} x{amount} ({item.UniqueID})";
 
             LogMessage(message, source);
+        }
+
+        public void ItemChangedHero(UserItem item, uint amount, int state, [CallerMemberName] string source = "")
+        {
+            string type = string.Empty;
+
+            switch (state)
+            {
+                case 1:
+                    type = "Lost";
+                    break;
+                case 2:
+                    type = "Gained";
+                    break;
+            }
+
+            string message = $"Item {type} - {item.Info.Name} x{amount} ({item.UniqueID})";
+
+            LogHeroMessage(message, source);
         }
 
         public void ItemGSBought(GameShopItem item, uint amount, uint CreditCost, uint GoldCost, [CallerMemberName] string source = "")
@@ -191,6 +209,20 @@ namespace Server.MirObjects
             try
             {
                 var logMessage = $"{_player.Name} - {source} : {message}";
+
+                log.Info(logMessage);
+            }
+            catch (Exception ex)
+            {
+                MessageQueue.Enqueue(ex);
+            }
+        }
+
+        private void LogHeroMessage(string message, string source)
+        {
+            try
+            {
+                var logMessage = $"{_player.Name}[Hero] - {source} : {message}";
 
                 log.Info(logMessage);
             }

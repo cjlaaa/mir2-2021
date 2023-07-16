@@ -1,6 +1,4 @@
-﻿using System;
-
-public enum MouseCursor : byte
+﻿public enum MouseCursor : byte
 {
     None,
     Default,
@@ -87,12 +85,18 @@ public enum AwakeType : byte
 }
 
 [Flags]
-public enum LevelEffects : byte
+public enum LevelEffects : ushort
 {
     None = 0,
-    Mist = 0x0001,
-    RedDragon = 0x0002,
-    BlueDragon = 0x0004
+    Mist = 1,
+    RedDragon = 2,
+    BlueDragon = 4,
+    Rebirth1 = 8,
+    Rebirth2 = 16,
+    Rebirth3 = 32,
+    NewBlue = 64,
+    YellowDragon = 128,
+    Phoenix = 256
 }
 
 public enum OutputMessageType : byte
@@ -970,6 +974,7 @@ public enum PetMode : byte
     MoveOnly = 1,
     AttackOnly = 2,
     None = 3,
+    FocusMasterTarget = 4
 }
 
 [Flags]
@@ -1198,6 +1203,7 @@ public enum Spell : byte
     Hemorrhage = 104,
     CrescentSlash = 105,
     MoonMist = 106,
+    CatTongue = 107,
 
     //Archer
     Focus = 121,
@@ -1286,7 +1292,8 @@ public enum SpellEffect : byte
     DeathCrawlerBreath,
     FlamingMutantWeb,
     FurbolgWarriorCritical,
-    Tester    
+    Tester,
+    MoonMist
 }
 
 
@@ -1378,7 +1385,9 @@ public enum BuffStackType : byte
     StackDuration,
     StackStat,
     StackStatAndDuration,
-    Infinite
+    Infinite,
+    ResetStat,
+    ResetStatAndDuration
 }
 
 public enum DefenceType : byte
@@ -1665,7 +1674,9 @@ public enum ServerPacketIds : short
     ExpireTimer,
     UpdateNotice,
     Roll,
-    SetCompass
+    SetCompass,
+    GroupMembersMap,
+    SendMemberLocation,
 }
 
 public enum ClientPacketIds : short

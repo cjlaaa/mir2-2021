@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using C = ClientPackets;
+﻿using C = ClientPackets;
 using S = ServerPackets;
 
 public abstract class Packet
@@ -36,8 +33,7 @@ public abstract class Packet
             }
             catch
             {
-                return null;
-                //return new C.Disconnect();
+                throw new InvalidDataException();
             }
         }
 
@@ -641,6 +637,10 @@ public abstract class Packet
                 return new S.GroupInvite();
             case (short)ServerPacketIds.AddMember:
                 return new S.AddMember();
+            case (short)ServerPacketIds.GroupMembersMap:
+                return new S.GroupMembersMap();
+            case (short)ServerPacketIds.SendMemberLocation:
+                return new S.SendMemberLocation();
             case (short)ServerPacketIds.Revived:
                 return new S.Revived();
             case (short)ServerPacketIds.ObjectRevived:

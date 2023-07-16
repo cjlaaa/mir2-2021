@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Globalization;
-using System.IO;
-using System.Linq;
+﻿using System.Globalization;
 using System.Text.RegularExpressions;
-using System.Windows.Forms;
 using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
@@ -13,10 +7,7 @@ using Client.MirObjects;
 using Client.MirSounds;
 using Font = System.Drawing.Font;
 using C = ClientPackets;
-using Effect = Client.MirObjects.Effect;
-
-using Client.MirScenes.Dialogs;
-using System.Drawing.Imaging;
+using System.Diagnostics;
 
 namespace Client.MirScenes.Dialogs
 {
@@ -424,7 +415,11 @@ namespace Client.MirScenes.Dialogs
                 {
                     if (link.StartsWith("http://", true, CultureInfo.InvariantCulture))
                     {
-                        System.Diagnostics.Process.Start(link);
+                        System.Diagnostics.Process.Start(new ProcessStartInfo
+                        {
+                            FileName = link,
+                            UseShellExecute = true
+                        });
                     }
                 };
             }
@@ -710,14 +705,24 @@ namespace Client.MirScenes.Dialogs
 
                 MapObject.User.GetMaxGain(SelectedItem);
 
+                if (SelectedItem.Count == 0)
+                {
+                    SelectedItem.Count = tempCount;
+                    GameScene.Scene.ChatDialog.ReceiveChat(GameLanguage.NoBagSpace, ChatType.System);
+                    return;
+                }
+
+                if (SelectedItem.Count < maxQuantity)
+                {
+                    maxQuantity = SelectedItem.Count;
+                }
+
                 if (SelectedItem.Count > tempCount)
                 {
                     SelectedItem.Count = tempCount;
                 }
 
-                if (SelectedItem.Count == 0) return;
-
-                MirAmountBox amountBox = new MirAmountBox("Purchase Amount:", SelectedItem.Image, maxQuantity, 0, SelectedItem.Count);
+                MirAmountBox amountBox = new("Purchase Amount:", SelectedItem.Image, maxQuantity, 0, SelectedItem.Count);
 
                 amountBox.OKButton.Click += (o, e) =>
                 {
@@ -737,18 +742,12 @@ namespace Client.MirScenes.Dialogs
                     return;
                 }
 
-                if (SelectedItem.Weight > (MapObject.User.Stats[Stat.BagWeight] - MapObject.User.CurrentBagWeight))
-                {
-                    GameScene.Scene.ChatDialog.ReceiveChat("You do not have enough weight.", ChatType.System);
-                    return;
-                }
-
                 for (int i = 0; i < MapObject.User.Inventory.Length; i++)
                 {
                     if (MapObject.User.Inventory[i] == null) break;
                     if (i == MapObject.User.Inventory.Length - 1)
                     {
-                        GameScene.Scene.ChatDialog.ReceiveChat("You cannot purchase any more items.", ChatType.System);
+                        GameScene.Scene.ChatDialog.ReceiveChat(GameLanguage.NoBagSpace, ChatType.System);
                         return;
                     }
                 }
@@ -1984,16 +1983,14 @@ namespace Client.MirScenes.Dialogs
             //TODO - Check Max slots spare against slots to be used (stacksize/quantity)
             //TODO - GetMaxItemGain
 
-            if (RecipeItem.Weight > (MapObject.User.Stats[Stat.BagWeight] - MapObject.User.CurrentBagWeight))
+            if (max == 1)
             {
-                GameScene.Scene.ChatDialog.ReceiveChat("You do not have enough weight.", ChatType.System);
-                return;
-            }
+                if (Recipe.Gold > GameScene.Gold)
+                {
+                    GameScene.Scene.ChatDialog.ReceiveChat("You do not have enough gold.", ChatType.System);
+                    return;
+                }
 
-            if (Recipe.Gold > GameScene.Gold)
-            {
-                GameScene.Scene.ChatDialog.ReceiveChat("You do not have enough gold.", ChatType.System);
-                return;
             }
 
             if (max > 1)
@@ -2007,6 +2004,12 @@ namespace Client.MirScenes.Dialogs
                         if (!HasCraftItems((ushort)amountBox.Amount))
                         {
                             GameScene.Scene.ChatDialog.ReceiveChat("You do not have the required tools or ingredients.", ChatType.System);
+                            return;
+                        }
+                        
+                        if ((Recipe.Gold * amountBox.Amount) > GameScene.Gold)
+                        {
+                            GameScene.Scene.ChatDialog.ReceiveChat("You do not have enough gold.", ChatType.System);
                             return;
                         }
 

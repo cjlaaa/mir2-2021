@@ -1,15 +1,6 @@
 ﻿using Client.MirControls;
 using Client.MirGraphics;
-using Client.MirNetwork;
 using Client.MirSounds;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using C = ClientPackets;
 
 namespace Client.MirScenes.Dialogs
 {
@@ -21,6 +12,7 @@ namespace Client.MirScenes.Dialogs
         public MirButton allItems, topItems, Deals, New;
         public MirButton CloseButton, PreviousButton, NextButton;
         public MirButton UpButton, DownButton, PositionBar;
+        public MirCheckBox PaymentTypeGold, PaymentTypeCredit;
 
 
         public GameShopCell[] Grid;
@@ -189,6 +181,33 @@ namespace Client.MirScenes.Dialogs
             {
                 GetCategories();
             };
+
+            PaymentTypeGold = new MirCheckBox
+            {
+                LabelText = "Buy with Gold",
+                Location = new Point(250, 449),
+                Parent = this,
+                Hint = "Buy item(s) with Gold.",
+                Index = 2086,
+                UnTickedIndex = 2086,
+                TickedIndex = 2087,
+                Library = Libraries.Prguse,
+                Checked = true
+            };
+            PaymentTypeGold.Click += PType_Clicked;
+
+            PaymentTypeCredit = new MirCheckBox
+            {
+                LabelText = "Buy with Credits",
+                Location = new Point(340, 449),
+                Parent = this,
+                Hint = "Buy item(s) with Credits.",
+                Index = 2086,
+                UnTickedIndex = 2086,
+                TickedIndex = 2087,
+                Library = Libraries.Prguse
+            };
+            PaymentTypeCredit.Click += PType_Clicked;
 
             allItems = new MirButton
             {
@@ -451,6 +470,30 @@ namespace Client.MirScenes.Dialogs
             Viewer = new GameShopViewer();
 
         }
+
+        private void PType_Clicked(object sender, EventArgs e)
+        {
+            if (sender == PaymentTypeCredit)
+                RefreshPayType(0);
+            else if (sender == PaymentTypeGold)
+                RefreshPayType(1);
+        }
+
+        private void RefreshPayType(int idx)
+        {
+            switch (idx)
+            {
+                case 0: //  Credits
+                    PaymentTypeCredit.Checked = true;
+                    PaymentTypeGold.Checked = false;
+                    break;
+                case 1: //  Gold
+                    PaymentTypeGold.Checked = true;
+                    PaymentTypeCredit.Checked = false;
+                    break;
+            }
+        }
+
 
         public override void Hide()
         {

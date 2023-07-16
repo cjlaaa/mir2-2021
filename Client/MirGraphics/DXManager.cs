@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Drawing.Drawing2D;
+﻿using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using Client.MirControls;
 using Client.MirScenes;
@@ -15,7 +12,6 @@ namespace Client.MirGraphics
     {
         public static List<MImage> TextureList = new List<MImage>();
         public static List<MirControl> ControlList = new List<MirControl>();
-
 
         public static Device Device;
         public static Sprite Sprite;
@@ -41,7 +37,6 @@ namespace Client.MirGraphics
         public static PixelShader GrayScalePixelShader;
         public static PixelShader NormalPixelShader;
         public static PixelShader MagicPixelShader;
-        public static PixelShader ShadowPixelShader;
 
         public static bool GrayScale;
 
@@ -581,5 +576,20 @@ namespace Client.MirGraphics
             ControlList.Clear();
         }
 
+        public static void Dispose()
+        {
+            CleanUp();
+
+            Device.Direct3D?.Dispose();
+
+            if (Program.Form.WindowState != FormWindowState.Normal)
+            {
+                Device.Dispose();
+            }
+
+            NormalPixelShader?.Dispose();
+            GrayScalePixelShader?.Dispose();
+            MagicPixelShader?.Dispose();
+        }
     }
 }

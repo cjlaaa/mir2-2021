@@ -1,12 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using Server.MirEnvir;
 using System.Drawing;
+﻿using Server.MirEnvir;
 using Server.MirDatabase;
-using Server.MirObjects.Monsters;
 
 namespace Server.MirObjects
 {
@@ -556,7 +550,7 @@ namespace Server.MirObjects
 
         public void TakeConquest(PlayerObject player = null, GuildObject winningGuild = null)
         {
-            if (winningGuild == null && (player == null || player.MyGuild == null || player.MyGuild.Conquest != null)) return;
+            if (winningGuild == null && (player == null || player.MyGuild == null || player.MyGuild.Conquest != null || player.Dead)) return;
             if (winningGuild != null && winningGuild.Conquest != null) return;
             if (player != null && player.MyGuild != null && player.MyGuild.Conquest != null) return;
 
@@ -565,7 +559,6 @@ namespace Server.MirObjects
             switch (GameType)
             {
                 case ConquestGame.CapturePalace:
-                    if (player == null) return;
                     if (StartType == ConquestType.Request)
                         if (player.MyGuild.Guildindex != GuildInfo.AttackerID) break;
 
@@ -598,6 +591,12 @@ namespace Server.MirObjects
                     Guild.Conquest = this;
                     break;
                 case ConquestGame.ControlPoints:
+
+                    if (Guild != null)
+                    {
+                        tmpPrevious = Guild;
+                    }
+
                     GuildInfo.Owner = winningGuild.Guildindex;
                     Guild = winningGuild;
                     Guild.Conquest = this;
@@ -619,10 +618,15 @@ namespace Server.MirObjects
                 FlagList[i].UpdateColour();
             }
 
-            if (Guild != null)
+            if (Guild != null &&
+                (tmpPrevious == null || Guild != tmpPrevious))
             {
                 UpdatePlayers(Guild);
-                if (tmpPrevious != null) UpdatePlayers(tmpPrevious);
+                if (tmpPrevious != null)
+                {
+                    tmpPrevious.Conquest = null;
+                    UpdatePlayers(tmpPrevious);
+                }
                 GuildInfo.NeedSave = true;
             }
         }
@@ -903,6 +907,9 @@ namespace Server.MirObjects
         public void StartWar(ConquestGame type)
         {
             WarIsOn = true;
+
+            foreach (var pl in Envir.Players)
+                pl.BroadcastInfo();
         }
 
         public void EndWar(ConquestGame type)
@@ -954,6 +961,9 @@ namespace Server.MirObjects
 
                     break;
             }
+
+            foreach (var pl in Envir.Players)
+                pl.BroadcastInfo();
         }
     }
 }

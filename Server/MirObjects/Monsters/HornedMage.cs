@@ -1,9 +1,7 @@
-﻿using System.Drawing;
-using Server.MirDatabase;
+using System.Drawing;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
 using S = ServerPackets;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Server.MirObjects.Monsters
 {

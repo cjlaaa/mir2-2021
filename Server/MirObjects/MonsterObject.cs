@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using Server.MirDatabase;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
 using Server.MirObjects.Monsters;
+using System.Diagnostics.Eventing.Reader;
 using S = ServerPackets;
 
 namespace Server.MirObjects
@@ -464,7 +462,29 @@ namespace Server.MirObjects
                 case 213:
                     return new Siege(info); //TODO
 
+                case 214:
+                    return new SepWarrior(info); //TODO
+                case 215:
+                    return new SepWizard(info); //TODO
+                case 216:
+                    return new SepTaoist(info); //TODO
+                case 217:
+                    return new SepAssassin(info); //TODO
+                case 218:
+                    return new SepArcher(info); //TODO
+                case 219:
+                    return new SepHighWarrior(info); //TODO
+                case 220:
+                    return new SepHighWizard(info); //TODO
+                case 221:
+                    return new SepHighTaoist(info); //TODO
+                case 222:
+                    return new SepHighAssassin(info); //TODO
+                case 223:
+                    return new SepHighArcher(info); //TODO
 
+                case 255://Skill 
+                    return new StoneTrap(info);
 
                 default:
                     return new MonsterObject(info);
@@ -595,21 +615,34 @@ namespace Server.MirObjects
         {
             get
             {
-                return !Dead && Envir.Time > MoveTime && Envir.Time > ActionTime && Envir.Time > ShockTime &&
-                       (Master == null || Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.Both) && !CurrentPoison.HasFlag(PoisonType.Paralysis)
-                       && !CurrentPoison.HasFlag(PoisonType.LRParalysis) && !CurrentPoison.HasFlag(PoisonType.Stun) && !CurrentPoison.HasFlag(PoisonType.Frozen);
+                return 
+                    !Dead && 
+                    Envir.Time > MoveTime && 
+                    Envir.Time > ActionTime && 
+                    Envir.Time > ShockTime &&
+                    (Master == null || Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.Both || Master.PMode == PetMode.FocusMasterTarget) && 
+                    !CurrentPoison.HasFlag(PoisonType.Paralysis) && 
+                    !CurrentPoison.HasFlag(PoisonType.LRParalysis) &&
+                    !CurrentPoison.HasFlag(PoisonType.Frozen) &&
+                    (!CurrentPoison.HasFlag(PoisonType.Stun) || (Info.Light == 10 || Info.Light == 5));
             }
         }
         protected virtual bool CanAttack
         {
             get
             {
-                return !Dead && Envir.Time > AttackTime && Envir.Time > ActionTime &&
-                     (Master == null || Master.PMode == PetMode.AttackOnly || Master.PMode == PetMode.Both || !CurrentMap.Info.NoFight) && !CurrentPoison.HasFlag(PoisonType.Paralysis)
-                       && !CurrentPoison.HasFlag(PoisonType.LRParalysis) && !CurrentPoison.HasFlag(PoisonType.Stun) && !CurrentPoison.HasFlag(PoisonType.Dazed) && !CurrentPoison.HasFlag(PoisonType.Frozen);
+                return 
+                    !Dead &&
+                    Envir.Time > AttackTime &&
+                    Envir.Time > ActionTime &&
+                    (Master == null || Master.PMode == PetMode.AttackOnly || Master.PMode == PetMode.Both || Master.PMode == PetMode.FocusMasterTarget) &&
+                    !CurrentPoison.HasFlag(PoisonType.Paralysis) &&
+                    !CurrentPoison.HasFlag(PoisonType.LRParalysis) &&
+                    !CurrentPoison.HasFlag(PoisonType.Dazed) &&
+                    !CurrentPoison.HasFlag(PoisonType.Frozen) &&
+                    (!CurrentPoison.HasFlag(PoisonType.Stun) || (Info.Light == 10 || Info.Light == 5));
             }
         }
-
         protected internal MonsterObject(MonsterInfo info)
         {
             Info = info;
@@ -877,6 +910,7 @@ namespace Server.MirObjects
 
             PoisonList.Clear();
             Envir.MonsterCount--;
+            if (CurrentMap != null)
             CurrentMap.MonsterCount--;
         }
 
@@ -1336,6 +1370,8 @@ namespace Server.MirObjects
                         BroadcastDamageIndicator(DamageType.Hit, -poison.Value);
                         if (PoisonStopRegen)
                             RegenTime = Envir.Time + RegenDelay;
+                        if (poison.Owner != null && Target == null)
+                            Target = poison.Owner;
                     }
 
                     if (poison.PType == PoisonType.DelayedExplosion)
@@ -1504,7 +1540,7 @@ namespace Server.MirObjects
 
             if (Master != null)
             {
-                if ((Master.PMode == PetMode.Both || Master.PMode == PetMode.MoveOnly))
+                if (Master.PMode == PetMode.Both || Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.FocusMasterTarget)
                 {
                     if (!Functions.InRange(CurrentLocation, Master.CurrentLocation, Globals.DataRange) || CurrentMap != Master.CurrentMap)
                         PetRecall();
@@ -1592,7 +1628,7 @@ namespace Server.MirObjects
         protected virtual void ProcessSearch()
         {
             if (Envir.Time < SearchTime) return;
-            if (Master != null && (Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.None)) return;
+            if (Master != null && (Master.PMode == PetMode.MoveOnly || Master.PMode == PetMode.None || Master.PMode == PetMode.FocusMasterTarget)) return;
 
             SearchTime = Envir.Time + SearchDelay;
 
@@ -1683,12 +1719,36 @@ namespace Server.MirObjects
                             {
                                 case ObjectType.Monster:
                                 case ObjectType.Hero:
+
                                     if (!ob.IsAttackTarget(this)) continue;
                                     if (ob.Hidden && (!CoolEye || Level < ob.Level)) continue;
                                     if (this is TrapRock && ob.InTrapRock) continue;
-                                    Target = ob;
-                                    return;
+
+                                    if (ob.Race == ObjectType.Monster && 
+                                        ob is StoneTrap)
+                                    {
+                                        if (Target is null || 
+                                            (Target is not null &&
+                                            Target is not StoneTrap))
+                                        {
+                                            Target = ob;
+                                        }
+                                        
+                                        return;
+                                    }
+                                    else
+                                    {
+                                        Target ??= ob;
+                                    }
+                                    continue;
+                                    
                                 case ObjectType.Player:
+
+                                    if (Target != null)
+                                    {
+                                        continue;
+                                    }
+
                                     PlayerObject playerob = (PlayerObject)ob;
                                     if (!ob.IsAttackTarget(this)) continue;
                                     if (playerob.GMGameMaster || ob.Hidden && (!CoolEye || Level < ob.Level) || Envir.Time < HallucinationTime) continue;
@@ -1706,7 +1766,7 @@ namespace Server.MirObjects
                                             break;
                                         }
                                     }
-                                    return;
+                                    continue;
                                 default:
                                     continue;
                             }
@@ -2358,7 +2418,7 @@ namespace Server.MirObjects
 
             Broadcast(new S.ObjectStruck { ObjectID = ObjectID, AttackerID = attacker.ObjectID, Direction = Direction, Location = CurrentLocation });
 
-            if (attacker.Stats[Stat.HPDrainRatePercent] > 0)
+            if (attacker.Stats[Stat.HPDrainRatePercent] > 0 && damageWeapon)
             {
                 attacker.HpDrain += Math.Max(0, ((float)(damage - armour) / 100) * attacker.Stats[Stat.HPDrainRatePercent]);
                 if (attacker.HpDrain > 2)
@@ -2379,7 +2439,8 @@ namespace Server.MirObjects
                     PlayerObject player = Envir.GetPlayer(mentee.Name);
                     if (player != null && player.CurrentMap == attacker.CurrentMap && Functions.InRange(player.CurrentLocation, attacker.CurrentLocation, Globals.DataRange) && !player.Dead)
                     {
-                        damage += (damage * Stats[Stat.MentorDamageRatePercent]) / 100;
+                        if (GroupMembers != null && GroupMembers.Contains(player))
+                            damage += (int)Math.Round((double)(damage * attacker.Stats[Stat.MentorDamageRatePercent]) / 100);
                     }
                 }
             }
@@ -2500,7 +2561,7 @@ namespace Server.MirObjects
 
         public override void ApplyPoison(Poison p, MapObject Caster = null, bool NoResist = false, bool ignoreDefence = true)
         {
-            if (p.Owner != null && p.Owner.IsAttackTarget(this))
+            if (p.Owner != null && p.Owner.IsAttackTarget(this) && Target == null)
                 Target = p.Owner;
 
             if (Master != null && p.Owner != null && p.Owner.Race == ObjectType.Player && p.Owner != Master)
@@ -3487,7 +3548,7 @@ namespace Server.MirObjects
         {
             MirDirection jumpDir = Functions.ReverseDirection(Direction);
 
-            Point location;
+            Point location = new Point();
 
             for (int i = 0; i < distance; i++)
             {

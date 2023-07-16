@@ -1,13 +1,6 @@
+using System.Drawing;
 ﻿using Server.MirDatabase;
 using Server.MirEnvir;
-using Server.MirObjects;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 using S = ServerPackets;
 
@@ -45,7 +38,7 @@ namespace Server.MirObjects
         public readonly int ScriptID;
         public readonly uint LoadedObjectID;
         public readonly NPCScriptType Type;
-        protected readonly string FileName;
+        public readonly string FileName;
 
         public const string
             MainKey = "[@MAIN]",
@@ -1226,12 +1219,12 @@ namespace Server.MirObjects
 
                 callingNPC.NeedSave = true;
 
-                player.Enqueue(new S.NPCGoods 
-                { 
-                    List = newGoodsList, 
-                    Rate = PriceRate(player), 
-                    HideAddedStats = Settings.GoodsHideAddedStats, 
-                    Type = player.NPCPage.Key.ToUpper() == BuyUsedKey ? PanelType.BuySub : PanelType.Buy 
+                player.Enqueue(new S.NPCGoods
+                {
+                    List = newGoodsList,
+                    Rate = PriceRate(player),
+                    HideAddedStats = Settings.GoodsHideAddedStats,
+                    Type = player.NPCPage.Key.ToUpper() == BuyUsedKey ? PanelType.BuySub : PanelType.Buy
                 });
             }
 
@@ -1266,7 +1259,7 @@ namespace Server.MirObjects
                 return;
             }
 
-            if (player.Account.Gold < recipe.Gold)
+            if (player.Account.Gold < (recipe.Gold * count))
             {
                 player.Enqueue(p);
                 return;
@@ -1437,8 +1430,8 @@ namespace Server.MirObjects
             }
 
             //Take Gold
-            player.Account.Gold -= recipe.Gold;
-            player.Enqueue(new S.LoseGold { Gold = recipe.Gold });
+            player.Account.Gold -= (recipe.Gold * count);
+            player.Enqueue(new S.LoseGold { Gold = (recipe.Gold * count) });
 
             if (Envir.Random.Next(100) >= recipe.Chance + player.Stats[Stat.CraftRatePercent])
             {

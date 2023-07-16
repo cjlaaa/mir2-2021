@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using C = ClientPackets;
-using Server.MirDatabase;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
 using Server.MirNetwork;
 using S = ServerPackets;
-using System.Text.RegularExpressions;
 using Server.MirObjects.Monsters;
 
 namespace Server.MirObjects
@@ -135,7 +129,10 @@ namespace Server.MirObjects
         {
             CheckCellTime = false;
 
-            Owner = owner;            
+            Owner = owner;
+
+            base.Report = owner.Report;
+
             Load(info, null);           
         }
 
@@ -297,7 +294,7 @@ namespace Server.MirObjects
         {
             return true;
         }
-        public override void BeginMagic(Spell spell, MirDirection dir, uint targetID, Point location)
+        public override void BeginMagic(Spell spell, MirDirection dir, uint targetID, Point location, bool spellTargetLock = false)
         {
             NextMagicSpell = spell;
             NextMagicDirection = dir;
@@ -311,6 +308,8 @@ namespace Server.MirObjects
 
             UserItem item = null;
             int index = -1;
+
+            if (Owner.Hero != null && Owner.Hero.Dead) return;
 
             for (int i = 0; i < Info.Inventory.Length; i++)
             {
@@ -739,6 +738,8 @@ namespace Server.MirObjects
         {
             base.Process();
 
+            if (Node == null || Info == null) return;
+
             if (Target != null && (Target.CurrentMap != CurrentMap || !Target.IsAttackTarget(this) || !Functions.InRange(CurrentLocation, Target.CurrentLocation, Globals.DataRange)))
                 Target = null;
 
@@ -1102,9 +1103,16 @@ namespace Server.MirObjects
 
         public override void GainExp(uint amount)
         {
-            if (!CanGainExp) return;
-
             if (amount == 0) return;
+
+            for (int i = 0; i < Pets.Count; i++)
+            {
+                MonsterObject monster = Pets[i];
+                if (monster.CurrentMap == CurrentMap && Functions.InRange(monster.CurrentLocation, CurrentLocation, Globals.DataRange) && !monster.Dead)
+                    monster.PetExp(amount);
+            }
+
+            if (!CanGainExp) return;
 
             if (Stats[Stat.ExpRatePercent] > 0)
             {
@@ -1114,13 +1122,6 @@ namespace Server.MirObjects
             Experience += amount;
 
             Owner.Enqueue(new S.GainHeroExperience { Amount = amount });
-
-            for (int i = 0; i < Pets.Count; i++)
-            {
-                MonsterObject monster = Pets[i];
-                if (monster.CurrentMap == CurrentMap && Functions.InRange(monster.CurrentLocation, CurrentLocation, Globals.DataRange) && !monster.Dead)
-                    monster.PetExp(amount);
-            }
 
             if (Experience < MaxExperience) return;
             if (Level >= ushort.MaxValue) return;

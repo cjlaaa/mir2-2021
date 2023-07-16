@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using Server.MirDatabase;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
-using Server.MirNetwork;
 using Server.MirObjects.Monsters;
 using S = ServerPackets;
-using System.IO;
-using System.Linq;
 
 namespace Server.MirObjects
 {
@@ -206,7 +201,6 @@ namespace Server.MirObjects
 
         }
 
-
         public virtual void Process()
         {
             if (Master != null && Master.Node == null) Master = null;
@@ -241,20 +235,7 @@ namespace Server.MirObjects
 
         public virtual void OnSafeZoneChanged()
         {
-            for (int i = 0; i < Buffs.Count; i++)
-            {
-                if (Buffs[i].ObjectID == 0) continue;
-                if (!Buffs[i].Properties.HasFlag(BuffProperty.PauseInSafeZone)) continue;
 
-                if (InSafeZone)
-                {
-                    PauseBuff(Buffs[i]);
-                }
-                else
-                {
-                    UnpauseBuff(Buffs[i]);
-                }
-            }
         }
 
         public abstract void SetOperateTime();
@@ -372,6 +353,8 @@ namespace Server.MirObjects
         }
         public virtual void Despawn()
         {
+            if (Node == null) return;
+            
             Broadcast(new S.ObjectRemove { ObjectID = ObjectID });
             Envir.Objects.Remove(Node);
             if (Settings.Multithreaded && (Race == ObjectType.Monster))
@@ -439,6 +422,9 @@ namespace Server.MirObjects
 
         public bool IsAttackTarget(MapObject attacker)
         {
+            if (attacker == null || attacker.Node == null) return false;
+            if (Dead || InSafeZone || attacker.InSafeZone || attacker == this) return false;
+            
             switch (attacker.Race)
             {
                 case ObjectType.Player:
@@ -616,6 +602,23 @@ namespace Server.MirObjects
                                 buff.ExpireTime += duration;
                             }
                             break;
+                        case BuffStackType.ResetStat:
+                        {
+                            if (stats != null)
+                            {
+                                buff.Stats = stats;
+                            }
+                        }
+                            break;
+                        case BuffStackType.ResetStatAndDuration:
+                        {
+                            buff.ExpireTime = duration;
+                            if (stats != null)
+                            {
+                                buff.Stats = stats;
+                            }
+                        }
+                            break;
                         case BuffStackType.Infinite:
                         case BuffStackType.None:
                             break;
@@ -630,6 +633,9 @@ namespace Server.MirObjects
 
             buff.Stats ??= new Stats();
             buff.Values = values ?? new int[0];
+
+            if (buff.Caster?.Node == null)
+                buff.Caster = owner;
 
             switch (buff.Type)
             {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.IO;
-using Server.MirEnvir;
-using System.Drawing;
+﻿using Server.MirEnvir;
 using Server.MirDatabase;
 
 namespace Server.MirObjects
@@ -162,8 +156,7 @@ namespace Server.MirObjects
 
             if (Conquest != null)
             {
-                string conquest = "[" + Conquest.Info.Name + "]";
-                gName += conquest;
+                gName += "[" + Conquest.Info.Name + "]";
             }
 
             member.Enqueue(new ServerPackets.GuildStatus()
@@ -395,9 +388,9 @@ namespace Server.MirObjects
                 }
             }
 
-            Found:
+        Found:
             if (Member == null) return false;
-            if (((Kicker.MyGuildRank.Index >= MemberRank.Index) && (Kicker.MyGuildRank.Index != 0)) && (Kicker.Info.Name != membername))
+            if ((Kicker.MyGuildRank.Index >= MemberRank.Index) && (Kicker.MyGuildRank.Index != 0) && (Kicker.Info.Name != membername))
             {
                 Kicker.ReceiveChat("Your rank is not adequate.", ChatType.System);
                 return false;
@@ -405,19 +398,20 @@ namespace Server.MirObjects
 
             if (MemberRank.Index == 0)
             {
-                if (MemberRank.Members.Count < 2)
+                if (MemberRank.Members.Count < 2 && Info.Membercount < 2) //Checks if last remaining member (and leader)
                 {
-                    Kicker.ReceiveChat("You cannot leave the guild when you're leader.", ChatType.System);
-                    return false;
+                    goto LeaderOk;
                 }
-                for (int i = 0; i < MemberRank.Members.Count; i++)
-                    if ((MemberRank.Members[i].Online) && (MemberRank.Members[i] != Member))
+                else
+                {
+                    if (MemberRank.Members.Count > 1) //Allows other leaders to leave without another leader online.
                         goto AllOk;
-                Kicker.ReceiveChat("You need at least 1 leader online.", ChatType.System);
+                }
+                Kicker.ReceiveChat("You need to be the last leading member of the guild to disband the guild.", ChatType.System);
                 return false;
             }
 
-            AllOk:
+        AllOk:
             MemberDeleted(membername, (PlayerObject)Member.Player, Member.Name == Kicker.Info.Name);
 
             if (Member.Player != null)
@@ -430,6 +424,22 @@ namespace Server.MirObjects
 
             NeedSave = true;
             Info.Membercount--;
+
+            return true;
+
+        LeaderOk:
+            MemberDeleted(membername, (PlayerObject)Member.Player, Member.Name == Kicker.Info.Name);
+
+            if (Member.Player != null)
+            {
+                PlayerObject LeavingMember = (PlayerObject)Member.Player;
+                LeavingMember.RefreshStats();
+            }
+
+            MemberRank.Members.Remove(Member);
+
+            Envir.DeleteGuild(this);
+            Kicker.ReceiveChat("You have disbanded the guild", ChatType.System);
 
             return true;
         }
@@ -542,7 +552,7 @@ namespace Server.MirObjects
         public void GainExp(uint amount)
         {
             bool Leveled = false;
-            if (Info.MaxExperience == 0) return;
+            if (Info.MaxExperience <= 0) return;
 
             uint expAmount = (uint)(amount * Settings.Guild_ExpRate);
             if (expAmount == 0) return;

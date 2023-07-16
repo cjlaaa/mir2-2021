@@ -1,9 +1,7 @@
-﻿using System;
 using System.Drawing;
-using Server.MirDatabase;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
 using S = ServerPackets;
-using System.Collections.Generic;
 
 namespace Server.MirObjects.Monsters
 {
@@ -116,7 +114,7 @@ namespace Server.MirObjects.Monsters
             {
                 Broadcast(new S.ObjectEffect { ObjectID = targets[i].ObjectID, Effect = SpellEffect.Behemoth });
 
-                if (targets[i].Attacked(this, damage, DefenceType.ACAgility) <= 0) continue;
+                if (targets[i].Attacked(this, damage, defence) <= 0) continue;
 
                 PoisonTarget(targets[i], 15, 5, PoisonType.Paralysis, 1000);
             }
@@ -127,7 +125,7 @@ namespace Server.MirObjects.Monsters
             MapObject target = (MapObject)data[0];
             int damage = (int)data[1];
             DefenceType defence = (DefenceType)data[2];
-            bool fireCircle = (bool)data[3];
+            bool fireCircle = data.Count >= 4 ? (bool)data[3] : false;
 
             if (target == null || !target.IsAttackTarget(this) || target.CurrentMap != CurrentMap || target.Node == null) return;
 
@@ -139,7 +137,7 @@ namespace Server.MirObjects.Monsters
 
                 for (int i = 0; i < targets.Count; i++)
                 {
-                    targets[i].Attacked(this, damage, DefenceType.AC);
+                    targets[i].Attacked(this, damage, defence);
                 }
             }
             else //Push back

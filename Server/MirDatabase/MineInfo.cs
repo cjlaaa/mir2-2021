@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.IO;
-using System.Text;
-
-namespace Server.MirDatabase
+﻿namespace Server.MirDatabase
 {
     public class MineSet
     {

@@ -1,11 +1,5 @@
 ﻿using Server.MirDatabase;
 using Server.MirEnvir;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Linq;
-using System.Windows.Forms;
 
 namespace Server.MirForms
 {
@@ -13,7 +7,6 @@ namespace Server.MirForms
     {
         public static Envir EditEnvir = null;
 
-        private static int _endIndex = 0;
         public static string Path = string.Empty;
 
         private static List<String> errors = new List<String>();
@@ -26,10 +19,8 @@ namespace Server.MirForms
             if (EditEnvir == null) return;
 
             var lines = File.ReadAllLines(Path);
-            _endIndex = EditEnvir.MapIndex; // Last map index number
             for (int i = 0; i < lines.Length; i++)
             {
-
                 if (lines[i].StartsWith("[")) // Read map info
                 {
                     lines[i] = System.Text.RegularExpressions.Regex.Replace(lines[i], @"\s+", " "); // Clear white-space
@@ -39,7 +30,7 @@ namespace Server.MirForms
                     if (lines[i].Contains(';'))
                         lines[i] = lines[i].Substring(0, lines[i].IndexOf(";", System.StringComparison.Ordinal));
 
-                    MirDatabase.MapInfo newMapInfo = new MirDatabase.MapInfo { Index = ++_endIndex };
+                    MirDatabase.MapInfo newMapInfo = new MirDatabase.MapInfo { Index = ++EditEnvir.MapIndex };
 
                     var a = lines[i].Split(']'); // Split map info into [0] = MapFile MapName 0 || [1] = Attributes
                     string[] b = a[0].Split(' ');
@@ -146,7 +137,8 @@ namespace Server.MirForms
                     EditEnvir.MapInfoList.Add(newMapInfo); // Add map to list
                 }
                 else if (lines[i].StartsWith(";")) continue;
-                else errors.Add("Error on Line " + i + ": " + lines[i] + "");
+                else
+                    continue;
             }
 
             for (int j = 0; j < EditEnvir.MapInfoList.Count; j++)
@@ -182,11 +174,11 @@ namespace Server.MirForms
                                 newMovement.ShowOnBigMap = true;
                                 lines[k] = lines[k].Replace("SHOWONBIGMAP", "");
                             }
-                            if (lines[k].Contains("ICON"))
+                            if (lines[k].Contains("BIGMAPICON"))
                             {
-                                int iconLocation = lines[k].IndexOf(" ICON");
+                                int iconLocation = lines[k].IndexOf(" BIGMAPICON");
                                 string icon = lines[k].Substring(iconLocation);
-                                int iconIndex = int.Parse(icon.Replace("ICON(", "").Replace(")", "")); //get value
+                                int iconIndex = int.Parse(icon.Replace("BIGMAPICON(", "").Replace(")", "")); //get value
                                 newMovement.Icon = iconIndex;
                                 lines[k] = lines[k].Remove(iconLocation);
                             }
@@ -255,7 +247,12 @@ namespace Server.MirForms
                                 }
                             }
 
-                            if (toMap < 0) continue;
+                            if (toMap < 0)
+                            {
+                                errors.Add("Destination Map Failed on line: " + lines[k] + "");
+                                continue;
+                            }
+
                             newMovement.MapIndex = toMap;
                             newMovement.Source = new Point(int.Parse(d[0]), int.Parse(d[1]));
                             newMovement.Destination = new Point(int.Parse(e[0]), int.Parse(e[1]));

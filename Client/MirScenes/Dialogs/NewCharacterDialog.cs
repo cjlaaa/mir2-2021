@@ -1,24 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Windows.Forms;
+﻿using System.Text.RegularExpressions;
 using Client.MirControls;
 using Client.MirGraphics;
-using Client.MirNetwork;
-using Client.MirObjects;
 using Client.MirSounds;
-using Font = System.Drawing.Font;
-using C = ClientPackets;
-using Effect = Client.MirObjects.Effect;
 namespace Client.MirScenes.Dialogs
 {
     public sealed class NewCharacterDialog : MirImageControl
     {
-        private static readonly Regex Reg = new Regex(@"^[A-Za-z0-9]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
+        private static readonly Regex Reg = new Regex(@"^[A-Za-z0-9]|[\u4e00-\u9fa5]{" + Globals.MinCharacterNameLength + "," + Globals.MaxCharacterNameLength + "}$");
 
         public MirImageControl TitleLabel;
         public MirAnimatedControl CharacterDisplay;
@@ -92,7 +80,7 @@ namespace Client.MirScenes.Dialogs
                 Parent = this,
                 PressedIndex = 282
             };
-            CancelButton.Click += (o, e) => Dispose();
+            CancelButton.Click += (o, e) => Hide();
 
             OKButton = new MirButton
             {

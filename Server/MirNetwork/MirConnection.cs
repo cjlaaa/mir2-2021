@@ -1,14 +1,12 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.Net.Sockets;
 using Server.MirDatabase;
 using Server.MirEnvir;
 using Server.MirObjects;
 using C = ClientPackets;
 using S = ServerPackets;
-using System.Linq;
 using System.Text.RegularExpressions;
+using Server.Utils;
 
 namespace Server.MirNetwork
 {
@@ -71,27 +69,16 @@ namespace Server.MirNetwork
         public bool HeroStorageSent;
         public Dictionary<long, DateTime> SentRankings = new Dictionary<long, DateTime>();
 
+        private DateTime _dataCounterReset;
+        private int _dataCounter;
+        private FixedSizedQueue<Packet> _lastPackets;
 
         public MirConnection(int sessionID, TcpClient client)
         {
             SessionID = sessionID;
             IPAddress = client.Client.RemoteEndPoint.ToString().Split(':')[0];
 
-            int connCount = 0;
-            for (int i = 0; i < Envir.Connections.Count; i++)
-            {
-                MirConnection conn = Envir.Connections[i];
-                if (conn.IPAddress == IPAddress && conn.Connected)
-                {
-                    connCount++;
-
-                    if (connCount >= Settings.MaxIP)
-                    {
-                        MessageQueue.EnqueueDebugging(IPAddress + ", Maximum connections reached.");
-                        conn.SendDisconnect(5);
-                    }
-                }
-            }
+            Envir.UpdateIPBlock(IPAddress, TimeSpan.FromSeconds(Settings.IPBlockSeconds));
 
             MessageQueue.Enqueue(IPAddress + ", Connected.");
 
@@ -101,6 +88,7 @@ namespace Server.MirNetwork
             TimeConnected = Envir.Time;
             TimeOutTime = TimeConnected + Settings.TimeOut;
 
+            _lastPackets = new FixedSizedQueue<Packet>(10);
 
             _receiveList = new ConcurrentQueue<Packet>();
             _sendList = new ConcurrentQueue<Packet>();
@@ -135,6 +123,7 @@ namespace Server.MirNetwork
                 Disconnecting = true;
             }
         }
+
         private void ReceiveData(IAsyncResult result)
         {
             if (!Connected) return;
@@ -157,16 +146,58 @@ namespace Server.MirNetwork
                 return;
             }
 
-            byte[] rawBytes = result.AsyncState as byte[];
+            if (_dataCounterReset < Envir.Now)
+            {
+                _dataCounterReset = Envir.Now.AddSeconds(5);
+                _dataCounter = 0;
+            }
 
-            byte[] temp = _rawData;
-            _rawData = new byte[dataRead + temp.Length];
-            Buffer.BlockCopy(temp, 0, _rawData, 0, temp.Length);
-            Buffer.BlockCopy(rawBytes, 0, _rawData, temp.Length, dataRead);
+            _dataCounter++;
 
-            Packet p;
-            while ((p = Packet.ReceivePacket(_rawData, out _rawData)) != null)
-                _receiveList.Enqueue(p);
+            try
+            {
+                byte[] rawBytes = result.AsyncState as byte[];
+
+                byte[] temp = _rawData;
+                _rawData = new byte[dataRead + temp.Length];
+                Buffer.BlockCopy(temp, 0, _rawData, 0, temp.Length);
+                Buffer.BlockCopy(rawBytes, 0, _rawData, temp.Length, dataRead);
+
+                Packet p;
+
+                while ((p = Packet.ReceivePacket(_rawData, out _rawData)) != null)
+                    _receiveList.Enqueue(p);
+            }
+            catch
+            {
+                Envir.UpdateIPBlock(IPAddress, TimeSpan.FromHours(24));
+
+                MessageQueue.Enqueue($"{IPAddress} Disconnected, Invalid packet.");
+
+                Disconnecting = true;
+                return;
+            }
+
+            if (_dataCounter > Settings.MaxPacket)
+            {
+                Envir.UpdateIPBlock(IPAddress, TimeSpan.FromHours(24));
+
+                List<string> packetList = new List<string>();
+
+                while (_lastPackets.Count > 0)
+                {
+                    _lastPackets.TryDequeue(out Packet pkt);
+
+                    Enum.TryParse<ClientPacketIds>((pkt?.Index ?? 0).ToString(), out ClientPacketIds cPacket);
+
+                    packetList.Add(cPacket.ToString());
+                }
+
+                MessageQueue.Enqueue($"{IPAddress} Disconnected, Large amount of Packets. LastPackets: {String.Join(",", packetList.Distinct())}.");
+
+                Disconnecting = true;
+                return;
+            }
 
             BeginReceive();
         }
@@ -205,7 +236,7 @@ namespace Server.MirNetwork
             foreach (MirConnection c in Observers)
                 c.Enqueue(p);
         }
-        
+
         public void Process()
         {
             if (_client == null || !_client.Connected)
@@ -218,6 +249,9 @@ namespace Server.MirNetwork
             {
                 Packet p;
                 if (!_receiveList.TryDequeue(out p)) continue;
+
+                _lastPackets.Enqueue(p);
+
                 TimeOutTime = Envir.Time + Settings.TimeOut;
                 ProcessPacket(p);
 
@@ -1111,7 +1145,7 @@ namespace Server.MirNetwork
         {
             if (Stage != GameStage.Game) return;
 
-            Player.DropItem(p.UniqueID, p.Count);
+            Player.DropItem(p.UniqueID, p.Count, p.HeroInventory);
         }
 
         private void TakeBackHeroItem(C.TakeBackHeroItem p)
@@ -1165,9 +1199,17 @@ namespace Server.MirNetwork
             if (Stage != GameStage.Game && Stage != GameStage.Observer) return;
 
             if (p.Ranking)
+            {
                 Envir.Inspect(this, (int)p.ObjectID);
+            }
+            else if (p.Hero)
+            {
+                Envir.InspectHero(this, (int)p.ObjectID);
+            }
             else
+            {
                 Envir.Inspect(this, p.ObjectID);
+            } 
         }
         private void Observe(C.Observe p)
         {
@@ -1323,7 +1365,7 @@ namespace Server.MirNetwork
             if (!actor.Dead && (actor.ActionTime > Envir.Time || actor.SpellTime > Envir.Time))
                 _retryList.Enqueue(p);
             else
-                actor.BeginMagic(p.Spell, p.Direction, p.TargetID, p.Location);
+                actor.BeginMagic(p.Spell, p.Direction, p.TargetID, p.Location, p.SpellTargetLock);
         }
 
         private void SwitchGroup(C.SwitchGroup p)

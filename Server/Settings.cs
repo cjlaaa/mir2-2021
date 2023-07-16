@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using Server.MirDatabase;
 using Server.MirObjects;
 
@@ -64,7 +60,10 @@ namespace Server
                              TimeOut = 10000,
                              MaxUser = 50,
                              RelogDelay = 50,
-                             MaxIP = 5;
+                             MaxIP = 5,
+                             MaxPacket = 50;
+
+        public static int IPBlockSeconds = 5;
 
         //HTTP
         public static bool StartHTTPService = false;
@@ -115,9 +114,11 @@ namespace Server
         public static int RestedPeriod = 60,
                           RestedBuffLength = 10,
                           RestedExpBonus = 5,
-                          RestedMaxBonus = 24;
+                          RestedMaxBonus = 24,
+                          NewbieGuildMaxSize = 1000;
 
-        public static string SkeletonName = "BoneFamiliar",
+        public static string NewbieGuild = "NewbieGuild",
+                             SkeletonName = "BoneFamiliar",
                              ShinsuName = "Shinsu",
                              BugBatName = "BugBat",
                              Zuma1 = "ZumaStatue",
@@ -169,6 +170,7 @@ namespace Server
                              ScrollMob2 = "TaoistScroll",
                              ScrollMob3 = "WizardScroll",
                              ScrollMob4 = "AssassinScroll",
+                             StoneName = "StoneTrap",
                              HeroName = "Hero";
 
         public static string HealRing = "Healing",
@@ -299,13 +301,22 @@ namespace Server
 
                 var paths = VersionPath.Split(',');
 
+                //foreach (var path in paths)
+                //{
+                //    if (File.Exists(path))
+                //        using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read))
+                //        using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
+                //            VersionHashes.Add(md5.ComputeHash(stream));
+                //}
+
                 foreach (var path in paths)
                 {
                     if (File.Exists(path))
                         using (FileStream stream = new FileStream(path, FileMode.Open, FileAccess.Read))
-                        using (MD5CryptoServiceProvider md5 = new MD5CryptoServiceProvider())
+                        using (MD5 md5 = MD5.Create())
                             VersionHashes.Add(md5.ComputeHash(stream));
                 }
+
             }
             catch (Exception ex)
             {
@@ -332,6 +343,7 @@ namespace Server
             TimeOut = Reader.ReadUInt16("Network", "TimeOut", TimeOut);
             MaxUser = Reader.ReadUInt16("Network", "MaxUser", MaxUser);
             MaxIP = Reader.ReadUInt16("Network", "MaxIP", MaxIP);
+            MaxPacket = Reader.ReadUInt16("Network", "MaxPacket", MaxPacket);
 
             //HTTP
             StartHTTPService = Reader.ReadBoolean("Network", "StartHTTPService", StartHTTPService);
@@ -368,6 +380,8 @@ namespace Server
             PlayerDiedItemTimeOut = Reader.ReadInt32("Game", "PlayerDiedItemTimeOut", PlayerDiedItemTimeOut);
             PetSave = Reader.ReadBoolean("Game", "PetSave", PetSave);
             PKDelay = Reader.ReadInt32("Game", "PKDelay", PKDelay);
+            NewbieGuild = Reader.ReadString("Game", "NewbieGuild", NewbieGuild);
+            NewbieGuildMaxSize = Reader.ReadInt32("Game", "NewbieGuildMaxSize", NewbieGuildMaxSize);
             SkeletonName = Reader.ReadString("Game", "SkeletonName", SkeletonName);
             BugBatName = Reader.ReadString("Game", "BugBatName", BugBatName);
             ShinsuName = Reader.ReadString("Game", "ShinsuName", ShinsuName);
@@ -419,6 +433,7 @@ namespace Server
             ToadName = Reader.ReadString("Game", "ToadName", ToadName);
             SnakeTotemName = Reader.ReadString("Game", "SnakeTotemName", SnakeTotemName);
             SnakesName = Reader.ReadString("Game", "SnakesName", SnakesName);
+            StoneName = Reader.ReadString("Game", "StoneName", StoneName);
             AncientBatName = Reader.ReadString("Game", "AncientBatName", AncientBatName);
             TucsonGeneralEgg = Reader.ReadString("Game", "TucsonGeneralEgg", TucsonGeneralEgg);
             GroupInviteDelay = Reader.ReadInt64("Game", "GroupInviteDelay", GroupInviteDelay);
@@ -628,6 +643,8 @@ namespace Server
             Reader.Write("Game", "PlayerDiedItemTimeOut", PlayerDiedItemTimeOut);
             Reader.Write("Game", "PetSave", PetSave);
             Reader.Write("Game", "PKDelay", PKDelay);
+            Reader.Write("Game", "NewbieGuild", NewbieGuild);
+            Reader.Write("Game", "NewbieGuildMaxSize", NewbieGuildMaxSize);
             Reader.Write("Game", "SkeletonName", SkeletonName);
             Reader.Write("Game", "BugBatName", BugBatName);
             Reader.Write("Game", "ShinsuName", ShinsuName);
@@ -673,6 +690,7 @@ namespace Server
             Reader.Write("Game", "ToadName", ToadName);
             Reader.Write("Game", "SnakeTotemName", SnakeTotemName);
             Reader.Write("Game", "SnakesName", SnakesName);
+            Reader.Write("Game", "StoneName", StoneName);
             Reader.Write("Game", "AncientBatName", AncientBatName);
             Reader.Write("Game", "TucsonGeneralEgg", TucsonGeneralEgg);
             Reader.Write("Game", "GroupInviteDelay", GroupInviteDelay);

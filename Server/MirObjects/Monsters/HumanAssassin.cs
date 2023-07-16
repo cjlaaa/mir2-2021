@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
-using Server.MirDatabase;
+﻿using Server.MirDatabase;
 using Server.MirEnvir;
-using Server.MirObjects.Monsters;
 using S = ServerPackets;
 
 namespace Server.MirObjects.Monsters
@@ -292,7 +288,9 @@ namespace Server.MirObjects.Monsters
 
             PoisonList.Clear();
             Envir.MonsterCount--;
-            CurrentMap.MonsterCount--;
+
+            if (CurrentMap != null)
+                CurrentMap.MonsterCount--;
         }
 
         private void ExplosionDie()

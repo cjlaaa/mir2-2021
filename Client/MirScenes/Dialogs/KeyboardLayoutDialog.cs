@@ -1,12 +1,6 @@
 ﻿using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirSounds;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Windows.Forms;
 
 namespace Client.MirScenes.Dialogs
 {
@@ -66,7 +60,12 @@ namespace Client.MirScenes.Dialogs
                 PressedIndex = 362,
                 Sound = SoundList.ButtonA,
             };
-            CloseButton.Click += (o, e) => Hide();
+
+            CloseButton.Click += (o, e) =>
+            {
+                CMain.InputKeys.Save(CMain.InputKeys.Keylist);
+                Hide();
+            };
 
             ScrollUpButton = new MirButton
             {

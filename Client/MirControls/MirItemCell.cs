@@ -1,7 +1,4 @@
-﻿using System;
-using System.Drawing;
-using System.Windows.Forms;
-using Client.MirGraphics;
+﻿using Client.MirGraphics;
 using Client.MirNetwork;
 using Client.MirObjects;
 using Client.MirScenes;
@@ -523,6 +520,32 @@ namespace Client.MirControls
                     if (CanUseItem() && (GridType == MirGridType.Inventory || GridType == MirGridType.HeroInventory))
                     {
                         if (CMain.Time < GameScene.UseItemTime) return;
+                        if (Item.Info.Type == ItemType.Potion && Item.Info.Shape == 4)
+                        {
+                            MirMessageBox messageBox = new MirMessageBox("Are you use you want to use this Potion?", MirMessageBoxButtons.YesNo);
+                            messageBox.YesButton.Click += (o, e) =>
+                            {
+                                Network.Enqueue(new C.UseItem { UniqueID = Item.UniqueID, Grid = GridType });
+
+                                if (Item.Count == 1 && ItemSlot < GameScene.User.BeltIdx)
+                                {
+                                    for (int i = GameScene.User.BeltIdx; i < GameScene.User.Inventory.Length; i++)
+                                        if (ItemArray[i] != null && ItemArray[i].Info == Item.Info)
+                                        {
+                                            Network.Enqueue(new C.MoveItem { Grid = MirGridType.Inventory, From = i, To = ItemSlot });
+                                            GameScene.Scene.InventoryDialog.Grid[i - GameScene.User.BeltIdx].Locked = true;
+                                            break;
+                                        }
+                                }
+
+                                GameScene.UseItemTime = CMain.Time + 100;
+                                PlayItemSound();
+                            };
+
+                            messageBox.Show();
+                            return;
+                        }
+
                         Network.Enqueue(new C.UseItem { UniqueID = Item.UniqueID, Grid = GridType });
 
                         if (HeroGridType)
@@ -1008,13 +1031,6 @@ namespace Client.MirControls
                                     }
                                 }
 
-                                if (GameScene.SelectedCell.Item.Weight + MapObject.User.CurrentBagWeight > MapObject.User.Stats[Stat.BagWeight])
-                                {
-                                    GameScene.Scene.ChatDialog.ReceiveChat("Too heavy to get back.", ChatType.System);
-                                    GameScene.SelectedCell = null;
-                                    return;
-                                }
-
                                 if (Item != null)
                                 {
                                     if (GameScene.SelectedCell.Item.Info == Item.Info && Item.Count < Item.Info.StackSize)
@@ -1086,13 +1102,6 @@ namespace Client.MirControls
                                     }
                                 }
 
-                                if (GameScene.SelectedCell.Item.Weight + MapObject.User.CurrentBagWeight > MapObject.User.Stats[Stat.BagWeight])
-                                {
-                                    GameScene.Scene.ChatDialog.ReceiveChat("Too heavy to get back.", ChatType.System);
-                                    GameScene.SelectedCell = null;
-                                    return;
-                                }
-
                                 if (Item != null)
                                 {
                                     if (GameScene.SelectedCell.Item.Info == Item.Info && Item.Count < Item.Info.StackSize)
@@ -1158,13 +1167,6 @@ namespace Client.MirControls
                                     }
                                 }
 
-                                if (GameScene.SelectedCell.Item.Weight + MapObject.User.CurrentBagWeight > MapObject.User.Stats[Stat.BagWeight])
-                                {
-                                    GameScene.Scene.ChatDialog.ReceiveChat("Too heavy to get back.", ChatType.System);
-                                    GameScene.SelectedCell = null;
-                                    return;
-                                }
-
                                 if (Item != null)
                                 {
                                     if (GameScene.SelectedCell.Item.Info == Item.Info && Item.Count < Item.Info.StackSize)
@@ -1213,13 +1215,6 @@ namespace Client.MirControls
                                     return;
                                 }
 
-                                if (GameScene.SelectedCell.Item.Weight + MapObject.User.CurrentBagWeight > MapObject.User.Stats[Stat.BagWeight])
-                                {
-                                    GameScene.Scene.ChatDialog.ReceiveChat("Too heavy to get back.", ChatType.System);
-                                    GameScene.SelectedCell = null;
-                                    return;
-                                }
-
                                 if (Item == null)
                                 {
                                     Network.Enqueue(new C.RetrieveRentalItem { From = GameScene.SelectedCell.ItemSlot, To = ItemSlot });
@@ -1247,13 +1242,6 @@ namespace Client.MirControls
                                         GameScene.SelectedCell = null;
                                         return;
                                     }
-                                }
-
-                                if (GameScene.SelectedCell.Item.Weight + MapObject.User.CurrentBagWeight > MapObject.User.Stats[Stat.BagWeight])
-                                {
-                                    GameScene.Scene.ChatDialog.ReceiveChat("Too heavy to transfer.", ChatType.System);
-                                    GameScene.SelectedCell = null;
-                                    return;
                                 }
 
                                 if (Item != null)
@@ -1756,7 +1744,6 @@ namespace Client.MirControls
                             }
 
                             GameScene.SelectedCell = null;
-                            MirMessageBox messageBox;
 
                             switch (errorCode)
                             {

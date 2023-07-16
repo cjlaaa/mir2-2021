@@ -1,17 +1,10 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Diagnostics;
-using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Drawing.Text;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Threading;
-using System.Windows.Forms;
 using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
@@ -49,7 +42,7 @@ namespace Client
         public static long PingTime;
         public static long NextPing = 10000;
 
-        public static bool Shift, Alt, Ctrl, Tilde;
+        public static bool Shift, Alt, Ctrl, Tilde, SpellTargetLock;
         public static double BytesSent, BytesReceived;
 
         public static KeyBindSettings InputKeys = new KeyBindSettings();
@@ -94,6 +87,8 @@ namespace Client
                 LoadMouseCursors();
                 SetMouseCursor(MouseCursor.Default);
 
+                SlimDX.Configuration.EnableObjectTracking = true;
+
                 DXManager.Create();
                 SoundManager.Create();
                 CenterToScreen();
@@ -132,6 +127,7 @@ namespace Client
             Alt = false;
             Ctrl = false;
             Tilde = false;
+            SpellTargetLock = false;
         }
 
         public static void CMain_KeyDown(object sender, KeyEventArgs e)
@@ -139,6 +135,16 @@ namespace Client
             Shift = e.Shift;
             Alt = e.Alt;
             Ctrl = e.Control;
+
+            if (!String.IsNullOrEmpty(InputKeys.GetKey(KeybindOptions.TargetSpellLockOn)))
+            {
+                SpellTargetLock = e.KeyCode == (Keys)Enum.Parse(typeof(Keys), InputKeys.GetKey(KeybindOptions.TargetSpellLockOn), true);
+            }
+            else
+            {
+                SpellTargetLock = false;
+            }
+
 
             if (e.KeyCode == Keys.Oem8)
                 CMain.Tilde = true;
@@ -182,6 +188,15 @@ namespace Client
             Shift = e.Shift;
             Alt = e.Alt;
             Ctrl = e.Control;
+
+            if (!String.IsNullOrEmpty(InputKeys.GetKey(KeybindOptions.TargetSpellLockOn)))
+            {
+                SpellTargetLock = e.KeyCode == (Keys)Enum.Parse(typeof(Keys), InputKeys.GetKey(KeybindOptions.TargetSpellLockOn), true);
+            }
+            else
+            {
+                SpellTargetLock = false;
+            }
 
             if (e.KeyCode == Keys.Oem8)
                 CMain.Tilde = false;
@@ -391,6 +406,7 @@ namespace Client
             catch (Direct3D9Exception ex)
             {
                 DXManager.DeviceLost = true;
+                SaveError(ex.ToString());
             }
             catch (Exception ex)
             {
@@ -499,10 +515,10 @@ namespace Client
             {
                 HintBaseLabel = new MirControl
                 {
-                    BackColour = Color.FromArgb(128, 128, 50),
+                    BackColour = Color.FromArgb(255, 0, 0, 0),
                     Border = true,
                     DrawControlTexture = true,
-                    BorderColour = Color.Yellow,
+                    BorderColour = Color.FromArgb(255, 144, 144, 0),
                     ForeColour = Color.Yellow,
                     Parent = MirScene.ActiveScene,
                     NotControl = true,
@@ -517,7 +533,7 @@ namespace Client
                 {
                     AutoSize = true,
                     BackColour = Color.Transparent,
-                    ForeColour = Color.White,
+                    ForeColour = Color.Yellow,
                     Parent = HintBaseLabel,
                 };
 
@@ -678,10 +694,17 @@ namespace Client
 
         private void CMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (CMain.Time < GameScene.LogTime && !Settings.UseTestConfig)
+            if (CMain.Time < GameScene.LogTime && !Settings.UseTestConfig && !GameScene.Observing)
             {
                 GameScene.Scene.ChatDialog.ReceiveChat(string.Format(GameLanguage.CannotLeaveGame, (GameScene.LogTime - CMain.Time) / 1000), ChatType.System);
                 e.Cancel = true;
+            }
+            else
+            {
+                Settings.Save();
+
+                DXManager.Dispose();
+                SoundManager.Dispose();
             }
         }
 
@@ -759,8 +782,8 @@ namespace Client
             if (hCurs == IntPtr.Zero) throw new Win32Exception();
             var curs = new Cursor(hCurs);
             // Note: force the cursor to own the handle so it gets released properly
-            var fi = typeof(Cursor).GetField("ownHandle", BindingFlags.NonPublic | BindingFlags.Instance);
-            fi.SetValue(curs, true);
+            //var fi = typeof(Cursor).GetField("ownHandle", BindingFlags.NonPublic | BindingFlags.Instance);
+            //fi.SetValue(curs, true);
             return curs;
         }
 

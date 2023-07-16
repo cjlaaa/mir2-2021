@@ -1,8 +1,4 @@
 ﻿using Server.MirObjects;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace Server.MirEnvir
@@ -45,6 +41,11 @@ namespace Server.MirEnvir
             }
 
             NextCheck = next;
+        }
+
+        public static void Clear()
+        {
+            Robots.Clear();
         }
 
         private bool IsMatch(DateTime date)

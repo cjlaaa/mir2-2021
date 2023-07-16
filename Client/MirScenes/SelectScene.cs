@@ -1,16 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Text.RegularExpressions;
-using System.Windows.Forms;
-using Client.MirControls;
+﻿using Client.MirControls;
 using Client.MirGraphics;
 using Client.MirNetwork;
 using Client.MirScenes.Dialogs;
 using Client.MirSounds;
 using C = ClientPackets;
 using S = ServerPackets;
-using System.Threading;
 namespace Client.MirScenes
 {
     public class SelectScene : MirScene
@@ -28,8 +22,8 @@ namespace Client.MirScenes
 
         public SelectScene(List<SelectInfo> characters)
         {
-            SoundManager.PlaySound(SoundList.SelectMusic, true);
-            Disposing += (o, e) => SoundManager.StopSound(SoundList.SelectMusic);
+            SoundManager.PlayMusic(SoundList.SelectMusic, true);
+            Disposing += (o, e) => SoundManager.StopMusic();
 
             Characters = characters;
             SortList();
@@ -239,17 +233,22 @@ namespace Client.MirScenes
 
         private void OpenNewCharacterDialog()
         {
-            _character = new NewCharacterDialog { Parent = this };
-
-            _character.OnCreateCharacter += (o, e) =>
+            if (_character == null || _character.IsDisposed)
             {
-                Network.Enqueue(new C.NewCharacter
+                _character = new NewCharacterDialog { Parent = this };
+
+                _character.OnCreateCharacter += (o, e) =>
                 {
-                    Name = _character.NameTextBox.Text,
-                    Class = _character.Class,
-                    Gender = _character.Gender
-                });
-            };
+                    Network.Enqueue(new C.NewCharacter
+                    {
+                        Name = _character.NameTextBox.Text,
+                        Class = _character.Class,
+                        Gender = _character.Gender
+                    });
+                };
+            }
+
+            _character.Show();
         }
 
 

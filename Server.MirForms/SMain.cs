@@ -1,6 +1,4 @@
-﻿using System;
-using System.Windows.Forms;
-using Server.MirEnvir;
+﻿using Server.MirEnvir;
 using Server.MirDatabase;
 using Server.MirForms.Systems;
 using Server.Database;
@@ -67,6 +65,7 @@ namespace Server
                 PlayersLabel.Text = $"Players: {Envir.Players.Count}";
                 MonsterLabel.Text = $"Monsters: {Envir.MonsterCount}";
                 ConnectionsLabel.Text = $"Connections: {Envir.Connections.Count}";
+                BlockedIPsLabel.Text = $"Blocked IPs: {Envir.IPBlocks.Count(x => x.Value > Envir.Now)}";
 
                 if (Settings.Multithreaded && (Envir.MobThreads != null))
                 {
@@ -447,6 +446,11 @@ namespace Server
             MirForms.DropBuilder.DropGenForm GenForm = new MirForms.DropBuilder.DropGenForm();
 
             GenForm.ShowDialog();
+        }
+
+        private void clearBlockedIPsToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Envir.IPBlocks.Clear();
         }
     }
 }

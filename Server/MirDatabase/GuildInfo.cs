@@ -1,10 +1,6 @@
+using System.Drawing;
 ﻿using Server.MirEnvir;
 using Server.MirObjects;
-using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.IO;
-using System.Text;
 
 namespace Server.MirDatabase
 {
@@ -58,7 +54,12 @@ namespace Server.MirDatabase
                 MaxExperience = Settings.Guild_ExperienceList[Level];
             }
 
-            if (Level < Settings.Guild_MembercapList.Count)
+            if (Name == Settings.NewbieGuild)
+            {
+                MemberCap = Settings.NewbieGuildMaxSize;
+                Level = 1;
+            }
+            else if(Level < Settings.Guild_MembercapList.Count)
             {
                 MemberCap = Settings.Guild_MembercapList[Level];
             }
@@ -149,7 +150,11 @@ namespace Server.MirDatabase
                 MaxExperience = Settings.Guild_ExperienceList[Level];
             }
 
-            if (Level < Settings.Guild_MembercapList.Count)
+            if (Name == Settings.NewbieGuild)
+            {
+                MemberCap = Settings.NewbieGuildMaxSize;
+            }
+            else if (Level < Settings.Guild_MembercapList.Count)
             {
                 MemberCap = Settings.Guild_MembercapList[Level];
             }

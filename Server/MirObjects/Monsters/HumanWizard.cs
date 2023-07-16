@@ -1,6 +1,5 @@
 ﻿using Server.MirDatabase;
 using S = ServerPackets;
-using System.Collections.Generic;
 
 namespace Server.MirObjects.Monsters
 {
@@ -151,7 +150,9 @@ namespace Server.MirObjects.Monsters
 
             PoisonList.Clear();
             Envir.MonsterCount--;
-            CurrentMap.MonsterCount--;
+
+            if (CurrentMap != null)
+                CurrentMap.MonsterCount--;
         }
 
         public override Packet GetInfo()
